@@ -298,29 +298,57 @@ function renderTokens() {
 function tokenPointerDown(e) {
   e.preventDefault();
   e.stopPropagation();
+
   const id = e.currentTarget.dataset.tokenId;
-  selectToken(id);
-  const board = $("board");
   const tokenEl = e.currentTarget;
-  tokenEl.setPointerCapture(e.pointerId);
+  const board = $("board");
+
+  selectToken(id);
+  tokenEl.setPointerCapture?.(e.pointerId);
+
+  let latestX = null;
+  let latestY = null;
+  let moved = false;
+
   const move = ev => {
     const rect = board.getBoundingClientRect();
-    const x = ((ev.clientX - rect.left) / rect.width) * 100;
-    const y = ((ev.clientY - rect.top) / rect.height) * 100;
-    const tokens = getTokens();
-    const token = tokens.find(t => t.id === id);
-    if (!token) return;
-    token.x = Math.max(2, Math.min(98, x));
-    token.y = Math.max(2, Math.min(98, y));
-    saveTokens(tokens);
-    renderTokens();
+
+    latestX = ((ev.clientX - rect.left) / rect.width) * 100;
+    latestY = ((ev.clientY - rect.top) / rect.height) * 100;
+
+    latestX = Math.max(2, Math.min(98, latestX));
+    latestY = Math.max(2, Math.min(98, latestY));
+
+    tokenEl.style.left = latestX + "%";
+    tokenEl.style.top = latestY + "%";
+    moved = true;
   };
+
   const up = () => {
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+
+    if (!moved || latestX === null || latestY === null) {
+      return;
+    }
+
+    const tokens = getTokens();
+    const token = tokens.find(t => t.id === id);
+
+    if (!token) return;
+
+    token.x = latestX;
+    token.y = latestY;
+
+    saveTokens(tokens);
+    renderTokens();
+    showToast("コマを移動しました");
   };
+
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
 }
 
 function renderBoardImage() {
