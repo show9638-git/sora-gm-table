@@ -77,6 +77,52 @@
       </section>
 
       <section class="card">
+        <h2>クイック判定</h2>
+        <p class="note">チャットを見ながら、そのまま行為判定を振れます。PLAYER情報がある場合は基準値を自動反映できます。</p>
+
+        <label>
+          判定方法
+          <select id="chatCheckTypeSelect">
+            <option value="manual">手入力</option>
+            <option value="accuracy">命中力判定</option>
+            <option value="evasion">回避力判定</option>
+            <option value="magic">魔法行使判定</option>
+            <option value="vitality">生命抵抗力判定</option>
+            <option value="spirit">精神抵抗力判定</option>
+            <option value="search">探索判定</option>
+            <option value="custom">その他の行為判定</option>
+          </select>
+        </label>
+
+        <label>
+          判定名
+          <input id="chatCheckNameInput" type="text" placeholder="例：探索判定" />
+        </label>
+
+        <div class="grid-3">
+          <label>
+            基準値
+            <input id="chatBaseValueInput" type="number" placeholder="PLAYER情報または手入力" />
+          </label>
+          <label>
+            修正値
+            <input id="chatModifierInput" type="number" value="0" />
+          </label>
+          <label>
+            目標値
+            <input id="chatTargetValueInput" type="number" placeholder="任意" />
+          </label>
+        </div>
+
+        <div class="button-row">
+          <button id="chatRollBtn">判定してチャットへ送る</button>
+          <button id="chatApplyPlayerValueBtn" class="sub-btn">PLAYER基準値を反映</button>
+        </div>
+
+        <p id="chatDiceError" class="error"></p>
+      </section>
+
+      <section class="card">
         <h2>チャットログ</h2>
         <div id="chatLog" class="log-list"></div>
       </section>
@@ -87,26 +133,26 @@
         <h2>行為判定</h2>
 
         <label>
+          判定方法
+          <select id="checkTypeSelect">
+            <option value="manual">手入力</option>
+            <option value="accuracy">命中力判定</option>
+            <option value="evasion">回避力判定</option>
+            <option value="magic">魔法行使判定</option>
+            <option value="vitality">生命抵抗力判定</option>
+            <option value="spirit">精神抵抗力判定</option>
+            <option value="search">探索判定</option>
+            <option value="custom">その他の行為判定</option>
+          </select>
+        </label>
+
+        <label>
           判定名
           <input id="checkNameInput" type="text" placeholder="例：探索判定" />
         </label>
 
-        <div class="shortcut-row">
-          <button data-check-name="命中力判定">命中</button>
-          <button data-check-name="回避力判定">回避</button>
-          <button data-check-name="魔法行使判定">魔法行使</button>
-          <button data-check-name="生命抵抗力判定">生命抵抗</button>
-          <button data-check-name="精神抵抗力判定">精神抵抗</button>
-          <button data-check-name="探索判定">探索</button>
-        </div>
-
-        <div class="shortcut-row">
-          <button data-player-value="accuracy">PLAYER命中</button>
-          <button data-player-value="evasion">PLAYER回避</button>
-          <button data-player-value="vitality">PLAYER生命抵抗</button>
-          <button data-player-value="spirit">PLAYER精神抵抗</button>
-          <button data-player-value="magic">PLAYER魔法行使</button>
-          <button data-player-value="search">PLAYER探索</button>
+        <div class="button-row">
+          <button id="applyPlayerValueBtn" class="sub-btn">PLAYER基準値を反映</button>
         </div>
 
         <div class="grid-3">
