@@ -1,9 +1,9 @@
 const STORAGE_KEYS = {
-  chat: "sora_gm_chat_v01",
-  player: "sora_gm_player_v01",
-  gm: "sora_gm_gm_v01",
-  history: "sora_gm_history_v01",
-  sceneImage: "sora_gm_scene_image_v01"
+  chat: "sora_gm_chat_v011",
+  player: "sora_gm_player_v011",
+  gm: "sora_gm_gm_v011",
+  history: "sora_gm_history_v011",
+  sceneImage: "sora_gm_scene_image_v011"
 };
 
 const CHECK_TYPES = {
@@ -53,6 +53,15 @@ let latestDiceResult = null;
 
 function $(id) {
   return document.getElementById(id);
+}
+
+function bind(id, eventName, handler) {
+  const element = $(id);
+  if (!element) {
+    console.warn(`要素が見つかりません: ${id}`);
+    return;
+  }
+  element.addEventListener(eventName, handler);
 }
 
 function nowText() {
@@ -111,8 +120,10 @@ function addChat({ speaker, type, text }) {
 }
 
 function renderChat() {
-  const chat = loadJson(STORAGE_KEYS.chat, []);
   const log = $("chatLog");
+  if (!log) return;
+
+  const chat = loadJson(STORAGE_KEYS.chat, []);
 
   if (chat.length === 0) {
     log.innerHTML = `<p class="note">チャットログはまだありません。</p>`;
@@ -262,20 +273,22 @@ function getCheckTypeInfo(type) {
 function applyCheckTypeToInputs(type, checkNameInputId, baseValueInputId) {
   const info = getCheckTypeInfo(type);
 
-  if (info.checkName) {
+  if (info.checkName && $(checkNameInputId)) {
     $(checkNameInputId).value = info.checkName;
   }
 
-  if (info.playerKey) {
+  if (info.playerKey && $(baseValueInputId)) {
     const value = getPlayerValue(info.playerKey);
-
     if (value !== undefined && value !== null && value !== "") {
       $(baseValueInputId).value = value;
     }
   }
 }
 
-function applySelectedPlayerValue(typeSelectId, checkNameInputId, baseValueInputId, errorId = null) {
+function applySelectedPlayerValue(typeSelectId, checkNameInputId, baseValueInputId, errorId) {
+  const errorElement = errorId ? $(errorId) : null;
+  if (errorElement) errorElement.textContent = "";
+
   const type = $(typeSelectId).value;
   const info = getCheckTypeInfo(type);
 
@@ -284,21 +297,25 @@ function applySelectedPlayerValue(typeSelectId, checkNameInputId, baseValueInput
   }
 
   if (!info.playerKey) {
-    if (errorId) $(errorId).textContent = "この判定方法はPLAYER基準値の自動反映対象ではありません。";
+    if (errorElement) errorElement.textContent = "手入力またはその他判定では、PLAYER基準値の自動反映はありません。";
     return false;
   }
 
   const value = getPlayerValue(info.playerKey);
 
   if (value === undefined || value === null || value === "") {
-    if (errorId) $(errorId).textContent = "PLAYER情報が未登録です。";
-    else alert("PLAYER情報が未登録です。");
+    if (errorElement) {
+      errorElement.textContent = `PLAYER情報の「${info.label}」用基準値が未登録です。PLAYERタブで入力して保存してください。`;
+    }
     return false;
   }
 
   $(baseValueInputId).value = value;
 
-  if (errorId) $(errorId).textContent = "";
+  if (errorElement) {
+    errorElement.textContent = `PLAYER情報から ${info.label} の基準値 ${value} を反映しました。`;
+  }
+
   return true;
 }
 
@@ -386,7 +403,23 @@ function formatDiceResultForChat(r) {
   return `【${r.checkName}】出目：${r.d1}+${r.d2}=${r.total} / 基準値：${r.base} / 修正値：${r.modifier >= 0 ? "+" : ""}${r.modifier} / 達成値：${r.achievement} / 結果：${r.result}${r.exp ? " / 経験点+50" : ""}`;
 }
 
+function formatDiceResultBlock(r) {
+  const targetText = r.target === null ? "なし" : r.target;
+  const expText = r.exp ? `\n経験点：+${r.exp}` : "";
+
+  return `【${r.checkName}】
+出目：${r.d1} + ${r.d2} = ${r.total}
+基準値：${r.base}
+修正値：${r.modifier >= 0 ? "+" : ""}${r.modifier}
+達成値：${r.achievement}
+目標値：${targetText}
+結果：${r.result}${expText}`;
+}
+
 function renderDiceResult(r) {
+  const diceResult = $("diceResult");
+  if (!diceResult) return;
+
   const cls = r.isAutoFail || r.isAutoSuccess
     ? "result-special"
     : r.result === "成功"
@@ -395,19 +428,24 @@ function renderDiceResult(r) {
         ? "result-fail"
         : "";
 
-  $("diceResult").className = `result-box ${cls}`;
+  diceResult.className = `result-box ${cls}`;
+  diceResult.textContent = formatDiceResultBlock(r);
+}
 
-  const targetText = r.target === null ? "なし" : r.target;
-  const expText = r.exp ? `\n経験点：+${r.exp}` : "";
+function renderChatQuickResult(r) {
+  const box = $("chatQuickResult");
+  if (!box) return;
 
-  $("diceResult").textContent =
-`【${r.checkName}】
-出目：${r.d1} + ${r.d2} = ${r.total}
-基準値：${r.base}
-修正値：${r.modifier >= 0 ? "+" : ""}${r.modifier}
-達成値：${r.achievement}
-目標値：${targetText}
-結果：${r.result}${expText}`;
+  const cls = r.isAutoFail || r.isAutoSuccess
+    ? "result-special"
+    : r.result === "成功"
+      ? "result-success"
+      : r.result === "失敗"
+        ? "result-fail"
+        : "";
+
+  box.className = `result-box ${cls}`;
+  box.textContent = formatDiceResultBlock(r) + "\n\nチャットログへ追加しました。";
 }
 
 function rollCheckFromDiceTab() {
@@ -442,7 +480,16 @@ function rollCheckFromChatTab() {
     const info = getCheckTypeInfo(selectedType);
 
     if ($("chatBaseValueInput").value === "" && info.playerKey) {
-      applySelectedPlayerValue("chatCheckTypeSelect", "chatCheckNameInput", "chatBaseValueInput", "chatDiceError");
+      const reflected = applySelectedPlayerValue(
+        "chatCheckTypeSelect",
+        "chatCheckNameInput",
+        "chatBaseValueInput",
+        "chatDiceError"
+      );
+
+      if (!reflected) {
+        return;
+      }
     }
 
     const checkName = $("chatCheckNameInput").value.trim() || info.checkName || "行為判定";
@@ -455,6 +502,7 @@ function rollCheckFromChatTab() {
     latestDiceResult = result;
     saveDiceHistory(result);
     renderHistory();
+    renderChatQuickResult(result);
 
     addChat({
       speaker: "PLAYER",
@@ -462,14 +510,17 @@ function rollCheckFromChatTab() {
       text: formatDiceResultForChat(result)
     });
 
-    $("chatDiceError").textContent = "";
+    $("chatDiceError").textContent = "判定しました。チャットログと履歴に追加済みです。";
   } catch (error) {
     $("chatDiceError").textContent = error.message;
   }
 }
 
 function sendLatestDiceResultToChat() {
-  if (!latestDiceResult) return;
+  if (!latestDiceResult) {
+    alert("送信できる判定結果がありません。先に判定してください。");
+    return;
+  }
 
   addChat({
     speaker: "PLAYER",
@@ -477,27 +528,30 @@ function sendLatestDiceResultToChat() {
     text: formatDiceResultForChat(latestDiceResult)
   });
 
+  alert("判定結果をチャットへ送りました。");
   setActiveTab("chat");
 }
 
 function renderHistory() {
+  const historySummary = $("historySummary");
+  const diceHistory = $("diceHistory");
+  if (!historySummary || !diceHistory) return;
+
   const history = loadJson(STORAGE_KEYS.history, []);
   const failCount = history.filter(h => h.isAutoFail).length;
   const expTotal = history.reduce((sum, h) => sum + Number(h.exp || 0), 0);
 
-  $("historySummary").textContent =
+  historySummary.textContent =
 `判定回数：${history.length}
 自動失敗回数：${failCount}
 自動失敗による獲得経験点：${expTotal}`;
 
-  const list = $("diceHistory");
-
   if (history.length === 0) {
-    list.innerHTML = `<p class="note">判定履歴はまだありません。</p>`;
+    diceHistory.innerHTML = `<p class="note">判定履歴はまだありません。</p>`;
     return;
   }
 
-  list.innerHTML = history.map(h => `
+  diceHistory.innerHTML = history.map(h => `
     <div class="log-item">
       <div class="log-meta">${escapeHtml(h.time)} / ${escapeHtml(h.checkName)}</div>
       <div>出目：${h.d1}+${h.d2}=${h.total} / 達成値：${h.achievement} / 結果：${escapeHtml(h.result)}${h.exp ? " / 経験点+50" : ""}</div>
@@ -608,6 +662,8 @@ function renderSceneImage() {
   const img = $("sceneImagePreview");
   const empty = $("sceneImageEmpty");
 
+  if (!img || !empty) return;
+
   if (dataUrl) {
     img.src = dataUrl;
     img.style.display = "block";
@@ -702,59 +758,61 @@ function initEvents() {
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
   });
 
-  $("addChatBtn").addEventListener("click", addChatFromInput);
-  $("copyChatBtn").addEventListener("click", copyChatLog);
-  $("clearChatBtn").addEventListener("click", clearChat);
+  bind("addChatBtn", "click", addChatFromInput);
+  bind("copyChatBtn", "click", copyChatLog);
+  bind("clearChatBtn", "click", clearChat);
 
-  $("checkTypeSelect").addEventListener("change", () => {
+  bind("checkTypeSelect", "change", () => {
     applyCheckTypeToInputs($("checkTypeSelect").value, "checkNameInput", "baseValueInput");
   });
 
-  $("chatCheckTypeSelect").addEventListener("change", () => {
+  bind("chatCheckTypeSelect", "change", () => {
     applyCheckTypeToInputs($("chatCheckTypeSelect").value, "chatCheckNameInput", "chatBaseValueInput");
   });
 
-  $("applyPlayerValueBtn").addEventListener("click", () => {
+  bind("applyPlayerValueBtn", "click", () => {
     applySelectedPlayerValue("checkTypeSelect", "checkNameInput", "baseValueInput", "diceError");
   });
 
-  $("chatApplyPlayerValueBtn").addEventListener("click", () => {
+  bind("chatApplyPlayerValueBtn", "click", () => {
     applySelectedPlayerValue("chatCheckTypeSelect", "chatCheckNameInput", "chatBaseValueInput", "chatDiceError");
   });
 
-  $("rollBtn").addEventListener("click", rollCheckFromDiceTab);
-  $("chatRollBtn").addEventListener("click", rollCheckFromChatTab);
+  bind("rollBtn", "click", rollCheckFromDiceTab);
+  bind("chatRollBtn", "click", rollCheckFromChatTab);
 
-  $("sendResultToChatBtn").addEventListener("click", sendLatestDiceResultToChat);
-  $("clearHistoryBtn").addEventListener("click", clearHistory);
+  bind("sendResultToChatBtn", "click", sendLatestDiceResultToChat);
+  bind("clearHistoryBtn", "click", clearHistory);
 
-  $("savePlayerBtn").addEventListener("click", savePlayer);
-  $("saveGmBtn").addEventListener("click", saveGm);
+  bind("savePlayerBtn", "click", savePlayer);
+  bind("saveGmBtn", "click", saveGm);
 
-  $("sendPublicInfoBtn").addEventListener("click", () => sendGmFieldToChat("gmPublicInfo", "状況描写"));
-  $("sendChoicesBtn").addEventListener("click", () => sendGmFieldToChat("gmChoices", "選択肢提示"));
+  bind("sendPublicInfoBtn", "click", () => sendGmFieldToChat("gmPublicInfo", "状況描写"));
+  bind("sendChoicesBtn", "click", () => sendGmFieldToChat("gmChoices", "選択肢提示"));
 
-  $("generatePromptBtn").addEventListener("click", generatePrompt);
-  $("copyPromptBtn").addEventListener("click", () => {
+  bind("generatePromptBtn", "click", generatePrompt);
+
+  bind("copyPromptBtn", "click", () => {
     navigator.clipboard.writeText($("generatedPrompt").value);
     alert("プロンプトをコピーしました。");
   });
 
-  $("exportDataBtn").addEventListener("click", exportAllData);
-  $("importDataBtn").addEventListener("click", importAllData);
+  bind("exportDataBtn", "click", exportAllData);
+  bind("importDataBtn", "click", importAllData);
 
-  $("importJsonTextBtn").addEventListener("click", importYtsheetJsonText);
-  $("clearJsonBtn").addEventListener("click", () => {
+  bind("importJsonTextBtn", "click", importYtsheetJsonText);
+
+  bind("clearJsonBtn", "click", () => {
     $("ytsheetJsonInput").value = "";
     $("jsonImportResult").textContent = "";
   });
 
-  $("ytsheetFileInput").addEventListener("change", event => {
+  bind("ytsheetFileInput", "change", event => {
     const file = event.target.files?.[0];
     if (file) handleYtsheetFile(file);
   });
 
-  $("sceneImageInput").addEventListener("change", event => {
+  bind("sceneImageInput", "change", event => {
     const file = event.target.files?.[0];
     if (file) handleSceneImage(file);
   });
