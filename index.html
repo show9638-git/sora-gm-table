@@ -10,13 +10,13 @@
   <header class="app-header">
     <div>
       <h1>Sora GM Table</h1>
-      <p>SW2.5 Solo GM Table v0.1.1</p>
+      <p>SW2.5 Solo GM Table v0.2</p>
     </div>
     <button id="exportDataBtn" class="small-btn">保存データ出力</button>
   </header>
 
   <nav class="tabs">
-    <button class="tab-btn active" data-tab="chat">チャット</button>
+    <button class="tab-btn active" data-tab="chat">卓</button>
     <button class="tab-btn" data-tab="dice">判定</button>
     <button class="tab-btn" data-tab="player">PLAYER</button>
     <button class="tab-btn" data-tab="gm">GMメモ</button>
@@ -26,12 +26,80 @@
   <main>
     <section id="chat" class="tab-panel active">
       <section class="card">
-        <h2>情景</h2>
-        <input id="sceneImageInput" type="file" accept="image/*" />
-        <div class="scene-box">
-          <img id="sceneImagePreview" alt="情景画像" />
-          <p id="sceneImageEmpty">情景画像は未設定です</p>
+        <h2>盤面</h2>
+        <p class="note">背景画像を設定し、PLAYER/NPC/ENEMYのコマを置けます。コマはタップで選択し、移動ボタンで動かします。</p>
+
+        <label>
+          盤面背景画像
+          <input id="sceneImageInput" type="file" accept="image/*" />
+        </label>
+
+        <div id="boardArea" class="board-area">
+          <img id="sceneImagePreview" alt="盤面背景" />
+          <p id="sceneImageEmpty">背景画像は未設定です</p>
+          <div id="tokenLayer" class="token-layer"></div>
         </div>
+
+        <div class="board-controls">
+          <div class="selected-token-box">
+            <strong>選択中：</strong><span id="selectedTokenName">なし</span>
+          </div>
+
+          <div class="move-grid">
+            <span></span>
+            <button id="moveUpBtn" class="sub-btn">上</button>
+            <span></span>
+            <button id="moveLeftBtn" class="sub-btn">左</button>
+            <button id="moveCenterBtn" class="sub-btn">中央</button>
+            <button id="moveRightBtn" class="sub-btn">右</button>
+            <span></span>
+            <button id="moveDownBtn" class="sub-btn">下</button>
+            <span></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>コマ管理</h2>
+
+        <div class="grid-2">
+          <label>
+            コマ名
+            <input id="tokenNameInput" type="text" placeholder="例：ワールド / ゴブリン" />
+          </label>
+
+          <label>
+            種別
+            <select id="tokenTypeInput">
+              <option value="PLAYER">PLAYER</option>
+              <option value="NPC">NPC</option>
+              <option value="ENEMY">ENEMY</option>
+            </select>
+          </label>
+
+          <label>
+            HP
+            <input id="tokenHpInput" type="number" placeholder="任意" />
+          </label>
+
+          <label>
+            コマ画像
+            <input id="tokenImageInput" type="file" accept="image/*" />
+          </label>
+        </div>
+
+        <label>
+          メモ
+          <textarea id="tokenMemoInput" rows="3" placeholder="行動方針、状態、外見など"></textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="addTokenBtn">コマ追加</button>
+          <button id="updateTokenBtn" class="sub-btn">選択中コマ更新</button>
+          <button id="deleteTokenBtn" class="danger-btn">選択中コマ削除</button>
+        </div>
+
+        <div id="tokenList" class="token-list"></div>
       </section>
 
       <section class="card">
@@ -186,7 +254,6 @@
     <section id="player" class="tab-panel">
       <section class="card">
         <h2>PLAYER情報</h2>
-
         <div class="grid-2">
           <label>キャラクター名<input id="pcName" type="text" /></label>
           <label>種族<input id="pcRace" type="text" /></label>
@@ -215,15 +282,12 @@
       <section class="card">
         <h2>ゆとシートJSON取り込み</h2>
         <p class="note">JSONを貼り付けるか、JSONファイルを選択してください。読み取れた項目だけ反映します。</p>
-
         <textarea id="ytsheetJsonInput" rows="7" placeholder="ゆとシートJSONを貼り付け"></textarea>
         <input id="ytsheetFileInput" type="file" accept=".json,application/json" />
-
         <div class="button-row">
           <button id="importJsonTextBtn">貼り付けJSONを反映</button>
           <button id="clearJsonBtn" class="sub-btn">JSON欄クリア</button>
         </div>
-
         <div id="jsonImportResult" class="note"></div>
       </section>
     </section>
@@ -231,7 +295,6 @@
     <section id="gm" class="tab-panel">
       <section class="card">
         <h2>GMメモ</h2>
-
         <label>シナリオ名<input id="gmScenario" type="text" /></label>
         <label>現在地<input id="gmLocation" type="text" /></label>
         <label>現在の目的<textarea id="gmObjective" rows="3"></textarea></label>
@@ -278,9 +341,9 @@
   </main>
 
   <footer>
-    <p>v0.1.1 / localStorage保存 / AI自動接続なし</p>
+    <p>v0.2 / localStorage保存 / AI自動接続なし</p>
   </footer>
 
-  <script src="./app.js?v=011"></script>
+  <script src="./app.js?v=020"></script>
 </body>
 </html>
