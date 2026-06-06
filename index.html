@@ -1,12 +1,238 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sora GM Table</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sora GM Table for SW2.5</title>
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <h1>Sora GM Table for SW2.5</h1>
-  <p>起動確認OK。ここから自作Web卓を作っていきます。</p>
+  <header class="app-header">
+    <div>
+      <h1>Sora GM Table</h1>
+      <p>SW2.5 Solo GM Table v0.1</p>
+    </div>
+    <button id="exportDataBtn" class="small-btn">保存データ出力</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="chat">チャット</button>
+    <button class="tab-btn" data-tab="dice">判定</button>
+    <button class="tab-btn" data-tab="player">PLAYER</button>
+    <button class="tab-btn" data-tab="gm">GMメモ</button>
+    <button class="tab-btn" data-tab="history">履歴</button>
+  </nav>
+
+  <main>
+    <section id="chat" class="tab-panel active">
+      <section class="card">
+        <h2>情景</h2>
+        <input id="sceneImageInput" type="file" accept="image/*" />
+        <div class="scene-box">
+          <img id="sceneImagePreview" alt="情景画像" />
+          <p id="sceneImageEmpty">情景画像は未設定です</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>チャット入力</h2>
+        <div class="grid-2">
+          <label>
+            発言者
+            <select id="speakerInput">
+              <option value="PLAYER">PLAYER</option>
+              <option value="GM">GM</option>
+              <option value="SYSTEM">SYSTEM</option>
+            </select>
+          </label>
+
+          <label>
+            種別
+            <select id="chatTypeInput">
+              <option value="行動宣言">行動宣言</option>
+              <option value="質問">質問</option>
+              <option value="RP発言">RP発言</option>
+              <option value="状況描写">状況描写</option>
+              <option value="選択肢提示">選択肢提示</option>
+              <option value="判定要求">判定要求</option>
+              <option value="判定結果">判定結果</option>
+              <option value="結果描写">結果描写</option>
+              <option value="世界反応">世界反応</option>
+              <option value="GM裁定">GM裁定</option>
+              <option value="要確認">要確認</option>
+              <option value="メモ">メモ</option>
+            </select>
+          </label>
+        </div>
+
+        <textarea id="chatTextInput" rows="4" placeholder="ここに発言を入力"></textarea>
+
+        <div class="button-row">
+          <button id="addChatBtn">ログに追加</button>
+          <button id="copyChatBtn" class="sub-btn">ログコピー</button>
+          <button id="clearChatBtn" class="danger-btn">ログ削除</button>
+        </div>
+
+        <p class="note">質問だけでは行動確定しません。選択肢以外の行動も自由に宣言できます。</p>
+      </section>
+
+      <section class="card">
+        <h2>チャットログ</h2>
+        <div id="chatLog" class="log-list"></div>
+      </section>
+    </section>
+
+    <section id="dice" class="tab-panel">
+      <section class="card">
+        <h2>行為判定</h2>
+
+        <label>
+          判定名
+          <input id="checkNameInput" type="text" placeholder="例：探索判定" />
+        </label>
+
+        <div class="shortcut-row">
+          <button data-check-name="命中力判定">命中</button>
+          <button data-check-name="回避力判定">回避</button>
+          <button data-check-name="魔法行使判定">魔法行使</button>
+          <button data-check-name="生命抵抗力判定">生命抵抗</button>
+          <button data-check-name="精神抵抗力判定">精神抵抗</button>
+          <button data-check-name="探索判定">探索</button>
+        </div>
+
+        <div class="shortcut-row">
+          <button data-player-value="accuracy">PLAYER命中</button>
+          <button data-player-value="evasion">PLAYER回避</button>
+          <button data-player-value="vitality">PLAYER生命抵抗</button>
+          <button data-player-value="spirit">PLAYER精神抵抗</button>
+          <button data-player-value="magic">PLAYER魔法行使</button>
+          <button data-player-value="search">PLAYER探索</button>
+        </div>
+
+        <div class="grid-3">
+          <label>
+            基準値
+            <input id="baseValueInput" type="number" placeholder="0" />
+          </label>
+          <label>
+            修正値
+            <input id="modifierInput" type="number" value="0" />
+          </label>
+          <label>
+            目標値
+            <input id="targetValueInput" type="number" placeholder="任意" />
+          </label>
+        </div>
+
+        <button id="rollBtn" class="main-action">2D6で判定する</button>
+        <p id="diceError" class="error"></p>
+      </section>
+
+      <section class="card">
+        <h2>今回の結果</h2>
+        <div id="diceResult" class="result-box">まだ判定していません。</div>
+        <button id="sendResultToChatBtn" class="sub-btn" disabled>チャットへ送る</button>
+      </section>
+    </section>
+
+    <section id="player" class="tab-panel">
+      <section class="card">
+        <h2>PLAYER情報</h2>
+
+        <div class="grid-2">
+          <label>キャラクター名<input id="pcName" type="text" /></label>
+          <label>種族<input id="pcRace" type="text" /></label>
+          <label>冒険者レベル<input id="pcLevel" type="number" /></label>
+          <label>防護点<input id="pcDefense" type="number" /></label>
+          <label>HP現在値<input id="pcHpNow" type="number" /></label>
+          <label>HP最大値<input id="pcHpMax" type="number" /></label>
+          <label>MP現在値<input id="pcMpNow" type="number" /></label>
+          <label>MP最大値<input id="pcMpMax" type="number" /></label>
+          <label>命中力基準値<input id="pcAccuracy" type="number" /></label>
+          <label>回避力基準値<input id="pcEvasion" type="number" /></label>
+          <label>生命抵抗力<input id="pcVitality" type="number" /></label>
+          <label>精神抵抗力<input id="pcSpirit" type="number" /></label>
+          <label>魔法行使基準値<input id="pcMagic" type="number" /></label>
+          <label>探索系基準値<input id="pcSearch" type="number" /></label>
+        </div>
+
+        <label>
+          メモ
+          <textarea id="pcMemo" rows="5"></textarea>
+        </label>
+
+        <button id="savePlayerBtn">PLAYER情報を保存</button>
+      </section>
+
+      <section class="card">
+        <h2>ゆとシートJSON取り込み</h2>
+        <p class="note">JSONを貼り付けるか、JSONファイルを選択してください。読み取れた項目だけ反映します。</p>
+
+        <textarea id="ytsheetJsonInput" rows="7" placeholder="ゆとシートJSONを貼り付け"></textarea>
+        <input id="ytsheetFileInput" type="file" accept=".json,application/json" />
+
+        <div class="button-row">
+          <button id="importJsonTextBtn">貼り付けJSONを反映</button>
+          <button id="clearJsonBtn" class="sub-btn">JSON欄クリア</button>
+        </div>
+
+        <div id="jsonImportResult" class="note"></div>
+      </section>
+    </section>
+
+    <section id="gm" class="tab-panel">
+      <section class="card">
+        <h2>GMメモ</h2>
+
+        <label>シナリオ名<input id="gmScenario" type="text" /></label>
+        <label>現在地<input id="gmLocation" type="text" /></label>
+        <label>現在の目的<textarea id="gmObjective" rows="3"></textarea></label>
+        <label>公開状況<textarea id="gmPublicInfo" rows="5"></textarea></label>
+        <label>隠し情報<textarea id="gmHiddenInfo" rows="5"></textarea></label>
+        <label>障害物・地形<textarea id="gmTerrain" rows="4"></textarea></label>
+        <label>NPC情報<textarea id="gmNpc" rows="4"></textarea></label>
+        <label>敵NPC情報<textarea id="gmEnemy" rows="4"></textarea></label>
+        <label>イベントトリガー<textarea id="gmTrigger" rows="4"></textarea></label>
+        <label>提示中の選択肢<textarea id="gmChoices" rows="4"></textarea></label>
+        <label>GM裁定メモ<textarea id="gmRuling" rows="4"></textarea></label>
+        <label>要確認ルール<textarea id="gmNeedCheck" rows="4"></textarea></label>
+
+        <div class="button-row">
+          <button id="saveGmBtn">GMメモを保存</button>
+          <button id="sendPublicInfoBtn" class="sub-btn">公開状況をチャットへ</button>
+          <button id="sendChoicesBtn" class="sub-btn">選択肢をチャットへ</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>ソラGM用プロンプト生成</h2>
+        <p class="note">AI自動連携前の暫定機能です。押すと、ここに貼る用のGM依頼文を作ります。</p>
+        <button id="generatePromptBtn">プロンプト生成</button>
+        <textarea id="generatedPrompt" rows="10" readonly></textarea>
+        <button id="copyPromptBtn" class="sub-btn">プロンプトコピー</button>
+      </section>
+    </section>
+
+    <section id="history" class="tab-panel">
+      <section class="card">
+        <h2>判定履歴</h2>
+        <div id="historySummary" class="summary-box"></div>
+        <div id="diceHistory" class="log-list"></div>
+        <button id="clearHistoryBtn" class="danger-btn">判定履歴を削除</button>
+      </section>
+
+      <section class="card">
+        <h2>保存データ取り込み</h2>
+        <textarea id="importDataInput" rows="8" placeholder="保存データ出力でコピーしたJSONを貼り付け"></textarea>
+        <button id="importDataBtn">保存データを取り込む</button>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <p>v0.1 / localStorage保存 / AI自動接続なし</p>
+  </footer>
+
+  <script src="./app.js"></script>
 </body>
 </html>
