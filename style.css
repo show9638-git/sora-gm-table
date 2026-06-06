@@ -264,3 +264,24 @@ h3 { margin: 12px 0 8px; color: var(--paper); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .launcher button { padding: 7px 8px; font-size: 12px; }
 }
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  z-index: 4;
+}
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  opacity: .85;
+}

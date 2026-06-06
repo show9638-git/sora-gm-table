@@ -96,6 +96,44 @@ function restoreWindowState() {
     if (s.zIndex) win.style.zIndex = s.zIndex;
   });
 }
+function initWindowResize() {
+  document.querySelectorAll(".window").forEach(win => {
+    if (win.querySelector(".resize-handle")) return;
+
+    const handle = document.createElement("div");
+    handle.className = "resize-handle";
+    handle.title = "サイズ変更";
+    win.appendChild(handle);
+
+    handle.addEventListener("pointerdown", e => {
+      if (window.matchMedia("(max-width: 820px)").matches) return;
+      e.preventDefault();
+      e.stopPropagation();
+      bringToFront(win);
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const rect = win.getBoundingClientRect();
+
+      const move = ev => {
+        const nextWidth = Math.max(260, rect.width + ev.clientX - startX);
+        const nextHeight = Math.max(180, rect.height + ev.clientY - startY);
+        win.style.width = nextWidth + "px";
+        win.style.height = nextHeight + "px";
+      };
+
+      const up = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        saveWindowState();
+      };
+
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
+  });
+}
+
 function initWindowDrag() {
   document.querySelectorAll(".window").forEach(win => {
     bringToFront(win);
@@ -313,10 +351,29 @@ function handleTokenImage(file) {
 
 function savePlayer() {
   const player = {
-    name: $("pcName").value, race: $("pcRace").value, level: $("pcLevel").value, defense: $("pcDefense").value,
-    hpNow: $("pcHpNow").value, hpMax: $("pcHpMax").value, mpNow: $("pcMpNow").value, mpMax: $("pcMpMax").value,
-    accuracy: $("pcAccuracy").value, evasion: $("pcEvasion").value, vitality: $("pcVitality").value,
-    spirit: $("pcSpirit").value, magic: $("pcMagic").value, search: $("pcSearch").value, memo: $("pcMemo").value
+    name: $("pcName").value,
+    race: $("pcRace").value,
+    level: $("pcLevel").value,
+    defense: $("pcDefense").value,
+    hpNow: $("pcHpNow").value,
+    hpMax: $("pcHpMax").value,
+    mpNow: $("pcMpNow").value,
+    mpMax: $("pcMpMax").value,
+    accuracy: $("pcAccuracy").value,
+    evasion: $("pcEvasion").value,
+    vitality: $("pcVitality").value,
+    spirit: $("pcSpirit").value,
+    magic: $("pcMagic").value,
+    search: $("pcSearch").value,
+    initiative: $("pcInitiative").value,
+    monsterLore: $("pcMonsterLore").value,
+    intBonus: $("pcIntBonus").value,
+    mndBonus: $("pcMndBonus").value,
+    skills: $("pcSkills").value,
+    magicPowers: $("pcMagicPowers").value,
+    weapons: $("pcWeapons").value,
+    equipments: $("pcEquipments").value,
+    memo: $("pcMemo").value
   };
   saveJson(STORAGE_KEYS.player, player);
   alert("PLAYER保存しました。");
@@ -326,8 +383,13 @@ function loadPlayerToForm() {
   for (const [id, key] of Object.entries({
     pcName:"name", pcRace:"race", pcLevel:"level", pcDefense:"defense", pcHpNow:"hpNow", pcHpMax:"hpMax",
     pcMpNow:"mpNow", pcMpMax:"mpMax", pcAccuracy:"accuracy", pcEvasion:"evasion", pcVitality:"vitality",
-    pcSpirit:"spirit", pcMagic:"magic", pcSearch:"search", pcMemo:"memo"
-  })) $(id).value = p[key] ?? "";
+    pcSpirit:"spirit", pcMagic:"magic", pcSearch:"search", pcInitiative:"initiative", pcMonsterLore:"monsterLore",
+    pcIntBonus:"intBonus", pcMndBonus:"mndBonus", pcSkills:"skills", pcMagicPowers:"magicPowers",
+    pcWeapons:"weapons", pcEquipments:"equipments", pcMemo:"memo"
+  })) {
+    const el = $(id);
+    if (el) el.value = p[key] ?? "";
+  }
 }
 function saveGm() {
   const gm = {
@@ -631,32 +693,192 @@ function loadPlayerJsonFileNameToForm() {
     $("playerJsonFileNameInput").value = savedFileName;
   }
 }
+function cleanYutorizeText(value) {
+  return String(value ?? "")
+    .replaceAll("&lt;br&gt;", "\n")
+    .replaceAll("<br>", "\n")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .trim();
+}
+
+function collectYutorizeSkills(data) {
+  const skillMap = [
+    ["ソーサラー", "lvSor"], ["コンジャラー", "lvCon"], ["ウィザード", "lvWiz"],
+    ["プリースト", "lvPri"], ["フェアリーテイマー", "lvFai"], ["マギテック", "lvMag"],
+    ["デーモンルーラー", "lvDem"], ["ドルイド", "lvDru"], ["アビスゲイザー", "lvAby"],
+    ["ファイター", "lvFig"], ["グラップラー", "lvGra"], ["フェンサー", "lvFen"], ["シューター", "lvSho"],
+    ["スカウト", "lvSco"], ["レンジャー", "lvRan"], ["セージ", "lvSag"], ["エンハンサー", "lvEnh"],
+    ["バード", "lvBar"], ["ライダー", "lvRid"], ["アルケミスト", "lvAlc"], ["ウォーリーダー", "lvWar"],
+    ["ジオマンサー", "lvGeo"], ["ダークハンター", "lvDar"]
+  ];
+
+  return skillMap
+    .map(([label, key]) => {
+      const value = data[key];
+      return value && value !== "0" ? `${label}${value}` : "";
+    })
+    .filter(Boolean)
+    .join(" / ");
+}
+
+function collectYutorizeMagicPowers(data) {
+  const powerMap = [
+    ["真語魔法", "magicPowerSor"], ["操霊魔法", "magicPowerCon"], ["深智魔法", "magicPowerWiz"],
+    ["神聖魔法", "magicPowerPri"], ["妖精魔法", "magicPowerFai"], ["魔動機術", "magicPowerMag"],
+    ["召異魔法", "magicPowerDem"], ["森羅魔法", "magicPowerDru"], ["奈落魔法", "magicPowerAby"],
+    ["闇狩魔法", "magicPowerDar"]
+  ];
+
+  return powerMap
+    .map(([label, key]) => {
+      const value = data[key];
+      return value && value !== "0" ? `${label}:${value}` : "";
+    })
+    .filter(Boolean)
+    .join(" / ");
+}
+
+function collectYutorizeWeapons(data) {
+  const num = Number(data.weaponNum || 0);
+  const lines = [];
+
+  for (let i = 1; i <= Math.max(num, 5); i++) {
+    const name = data[`weapon${i}Name`];
+    if (!name) continue;
+
+    const acc = data[`weapon${i}AccTotal`] ?? data[`weapon${i}Acc`] ?? "";
+    const dmg = data[`weapon${i}DmgTotal`] ?? data[`weapon${i}Dmg`] ?? "";
+    const rate = data[`weapon${i}Rate`] ?? "";
+    const crit = data[`weapon${i}Crit`] ?? "";
+    const usage = data[`weapon${i}Usage`] ?? "";
+    const note = cleanYutorizeText(data[`weapon${i}Note`] ?? "");
+
+    lines.push(`${name}${usage ? `/${usage}` : ""}${acc !== "" ? ` 命中補正:${acc}` : ""}${rate ? ` 威力:${rate}` : ""}${crit ? ` C:${crit}` : ""}${dmg !== "" ? ` 追加D:${dmg}` : ""}${note ? `\n  ${note}` : ""}`);
+  }
+
+  return lines.join("\n");
+}
+
+function collectYutorizeEquipments(data) {
+  const lines = [];
+
+  for (let i = 1; i <= 5; i++) {
+    const name = data[`armour${i}Name`];
+    if (!name) continue;
+    const category = data[`armour${i}Category`] ?? "";
+    const def = data[`armour${i}Def`] ?? "";
+    const note = cleanYutorizeText(data[`armour${i}Note`] ?? "");
+    lines.push(`${category ? category + "：" : ""}${name}${def ? ` 防護:${def}` : ""}${note ? `\n  ${note}` : ""}`);
+  }
+
+  const accessorySlots = [
+    ["頭", "accessoryHeadName"], ["顔", "accessoryFaceName"], ["耳", "accessoryEarName"], ["首", "accessoryNeckName"],
+    ["背中", "accessoryBackName"], ["右手", "accessoryHandRName"], ["左手", "accessoryHandLName"], ["腰", "accessoryWaistName"],
+    ["足", "accessoryFootName"], ["その他", "accessoryOtherName"]
+  ];
+
+  for (const [label, key] of accessorySlots) {
+    const name = data[key];
+    if (!name) continue;
+    const noteKey = key.replace("Name", "Note");
+    const note = cleanYutorizeText(data[noteKey] ?? "");
+    lines.push(`${label}：${name}${note ? `\n  ${note}` : ""}`);
+  }
+
+  return lines.join("\n");
+}
+
+function deriveYutorizeValues(data) {
+  const firstWeaponAcc = data.weapon1AccTotal ?? data.weapon1Acc ?? "";
+  const accuracy = firstWeaponAcc !== "" && data.level
+    ? String(Number(data.level || 0) + Number(data.bonusDex || 0) + Number(firstWeaponAcc || 0))
+    : firstWeaponAcc;
+
+  return {
+    accuracy,
+    evasion: data.defenseTotal1Eva ?? data.evaEquip ?? "",
+    magic: data.magicPowerSor || data.magicPowerWiz || data.magicPowerCon || data.magicPowerDem || data.magicPowerAby || "",
+    search: data.packScoObs || data.packRanObs || data.packWarAgi || "",
+    skills: collectYutorizeSkills(data),
+    magicPowers: collectYutorizeMagicPowers(data),
+    weapons: collectYutorizeWeapons(data),
+    equipments: collectYutorizeEquipments(data)
+  };
+}
+
 function applyYtsheetData(data) {
+  const applied = [];
+  const derived = deriveYutorizeValues(data);
+
   const map = [
     ["pcName", ["characterName", "name", "pcName"]],
     ["pcRace", ["race", "Race"]],
     ["pcLevel", ["level", "lv", "adventurerLevel"]],
-    ["pcHpMax", ["hp", "maxHp", "HP"]],
-    ["pcMpMax", ["mp", "maxMp", "MP"]],
-    ["pcDefense", ["defense", "protection", "armor"]],
-    ["pcAccuracy", ["accuracy", "hit", "命中"]],
-    ["pcEvasion", ["evasion", "dodge", "回避"]],
-    ["pcVitality", ["vitality", "生命抵抗"]],
-    ["pcSpirit", ["spirit", "精神抵抗"]],
-    ["pcMagic", ["magic", "魔法行使"]],
-    ["pcSearch", ["search", "探索"]]
+    ["pcHpMax", ["hpTotal", "hp", "maxHp", "HP"]],
+    ["pcHpNow", ["hpTotal", "hp", "maxHp", "HP"]],
+    ["pcMpMax", ["mpTotal", "mp", "maxMp", "MP"]],
+    ["pcMpNow", ["mpTotal", "mp", "maxMp", "MP"]],
+    ["pcDefense", ["defenseTotal1Def", "defEquip", "defense", "protection", "armor"]],
+    ["pcAccuracy", [derived.accuracy]],
+    ["pcEvasion", [derived.evasion, "evasion", "dodge", "回避"]],
+    ["pcVitality", ["vitResistTotal", "vitality", "生命抵抗"]],
+    ["pcSpirit", ["mndResistTotal", "spirit", "精神抵抗"]],
+    ["pcMagic", [derived.magic, "magic", "魔法行使"]],
+    ["pcSearch", [derived.search, "search", "探索"]],
+    ["pcInitiative", ["initiative"]],
+    ["pcMonsterLore", ["monsterLore"]],
+    ["pcIntBonus", ["bonusInt"]],
+    ["pcMndBonus", ["bonusMnd"]],
+    ["pcSkills", [derived.skills]],
+    ["pcMagicPowers", [derived.magicPowers]],
+    ["pcWeapons", [derived.weapons]],
+    ["pcEquipments", [derived.equipments]]
   ];
-  let count = 0;
+
   for (const [id, keys] of map) {
-    const v = pickFirst(data, keys);
-    if (v !== "") { $(id).value = v; count++; }
+    const element = $(id);
+    if (!element) continue;
+
+    let value = "";
+
+    for (const key of keys) {
+      if (key === undefined || key === null || key === "") continue;
+
+      if (typeof key === "string" && data[key] !== undefined && data[key] !== null && data[key] !== "") {
+        value = data[key];
+        break;
+      }
+
+      if (typeof key !== "string" || data[key] === undefined) {
+        value = key;
+        break;
+      }
+    }
+
+    if (value !== "") {
+      element.value = cleanYutorizeText(value);
+      applied.push(id);
+    }
   }
-  if (!$("pcHpNow").value && $("pcHpMax").value) $("pcHpNow").value = $("pcHpMax").value;
-  if (!$("pcMpNow").value && $("pcMpMax").value) $("pcMpNow").value = $("pcMpMax").value;
+
+  const memoParts = [];
+  if (data.sheetDescriptionM) memoParts.push(cleanYutorizeText(data.sheetDescriptionM));
+  if (data.items) memoParts.push("【所持品】\n" + cleanYutorizeText(data.items));
+  if (data.freeHistory) memoParts.push("【自由記入】\n" + cleanYutorizeText(data.freeHistory));
+
+  if ($("pcMemo") && memoParts.length) {
+    $("pcMemo").value = memoParts.join("\n\n");
+    applied.push("pcMemo");
+  }
+
   savePlayer();
-  $("jsonImportResult").textContent = count ? `読み込み成功：${count}項目反映` : "読み込みましたが自動反映できませんでした。";
+  $("jsonImportResult").textContent = applied.length
+    ? `読み込み成功：${applied.length}項目反映しました。`
+    : "読み込みましたが自動反映できませんでした。";
 }
-function handleYtsheetFile(file) {
+function handleYtsheetFilefunction handleYtsheetFile(file) {
   const reader = new FileReader();
   reader.onload = () => { $("ytsheetJsonInput").value = String(reader.result || ""); importYtsheetJsonText(); };
   reader.readAsText(file);
@@ -787,6 +1009,7 @@ function initEvents() {
 function refreshAll() {
   restoreWindowState();
   initWindowDrag();
+  initWindowResize();
   loadCharacterJsonUrlToForm();
   loadPlayerJsonFileNameToForm();
   loadPlayerToForm();

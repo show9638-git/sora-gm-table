@@ -10,7 +10,7 @@
   <header class="app-bar">
     <div class="brand">
       <div class="brand-title">Sora GM Table</div>
-      <div class="brand-sub">SW2.5 Solo Table v0.4.4 / Window Table</div>
+      <div class="brand-sub">SW2.5 Solo Table v0.4.5 / Window Table</div>
     </div>
     <nav class="launcher">
       <button data-open-window="window-board">盤面</button>
@@ -187,6 +187,18 @@
           <label>精神抵抗<input id="pcSpirit" type="number" /></label>
           <label>魔法行使<input id="pcMagic" type="number" /></label>
           <label>探索<input id="pcSearch" type="number" /></label>
+          <label>先制力<input id="pcInitiative" type="number" /></label>
+          <label>魔物知識<input id="pcMonsterLore" type="number" /></label>
+          <label>知力B<input id="pcIntBonus" type="number" /></label>
+          <label>精神B<input id="pcMndBonus" type="number" /></label>
+        </div>
+
+        <h3>技能・装備メモ</h3>
+        <div class="grid-2 compact">
+          <label>主な技能<textarea id="pcSkills" rows="3"></textarea></label>
+          <label>魔力一覧<textarea id="pcMagicPowers" rows="3"></textarea></label>
+          <label>武器<textarea id="pcWeapons" rows="3"></textarea></label>
+          <label>防具・装飾品<textarea id="pcEquipments" rows="3"></textarea></label>
         </div>
         <label>メモ<textarea id="pcMemo" rows="2"></textarea></label>
         <div class="button-row">
@@ -277,6 +289,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=044"></script>
+  <script src="./app.js?v=045"></script>
 </body>
 </html>
