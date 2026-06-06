@@ -878,7 +878,7 @@ function applyYtsheetData(data) {
     ? `読み込み成功：${applied.length}項目反映しました。`
     : "読み込みましたが自動反映できませんでした。";
 }
-function handleYtsheetFilefunction handleYtsheetFile(file) {
+function handleYtsheetFile(file) {
   const reader = new FileReader();
   reader.onload = () => { $("ytsheetJsonInput").value = String(reader.result || ""); importYtsheetJsonText(); };
   reader.readAsText(file);
