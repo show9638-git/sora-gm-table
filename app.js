@@ -1,11 +1,11 @@
 const STORAGE_KEYS = {
-  chat: "sora_gm_chat_v03",
-  player: "sora_gm_player_v03",
-  gm: "sora_gm_gm_v03",
-  history: "sora_gm_history_v03",
-  boardImage: "sora_gm_board_image_v03",
-  tokens: "sora_gm_tokens_v03",
-  ui: "sora_gm_ui_v03"
+  chat: "sora_gm_chat_v04",
+  player: "sora_gm_player_v04",
+  gm: "sora_gm_gm_v04",
+  history: "sora_gm_history_v04",
+  boardImage: "sora_gm_board_image_v04",
+  tokens: "sora_gm_tokens_v04",
+  windows: "sora_gm_windows_v04"
 };
 
 const CHECK_TYPES = {
@@ -22,6 +22,7 @@ const CHECK_TYPES = {
 let selectedTokenId = null;
 let pendingTokenImage = "";
 let latestDiceResult = null;
+let topZ = 50;
 
 function $(id) { return document.getElementById(id); }
 function bind(id, eventName, handler) {
@@ -32,29 +33,91 @@ function nowText() {
   return new Date().toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 function loadJson(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch { return fallback; }
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch { return fallback; }
 }
 function saveJson(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 function escapeHtml(text) {
   return String(text ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
-function openModal(id) {
-  $("modalBackdrop").classList.remove("hidden");
-  document.querySelectorAll(".modal").forEach(m => m.classList.add("hidden"));
-  $(id).classList.remove("hidden");
-}
-function closeModals() {
-  $("modalBackdrop").classList.add("hidden");
-  document.querySelectorAll(".modal").forEach(m => m.classList.add("hidden"));
-}
 function showToast(text) {
   const toast = $("toast");
   toast.textContent = text;
   toast.classList.remove("hidden");
-  setTimeout(() => toast.classList.add("hidden"), 1800);
+  setTimeout(() => toast.classList.add("hidden"), 1600);
+}
+
+function bringToFront(win) {
+  topZ += 1;
+  win.style.zIndex = topZ;
+}
+function openWindow(id) {
+  const win = $(id);
+  win.classList.remove("hidden-window");
+  bringToFront(win);
+  saveWindowState();
+}
+function closeWindow(id) {
+  $(id).classList.add("hidden-window");
+  saveWindowState();
+}
+function saveWindowState() {
+  const state = {};
+  document.querySelectorAll(".window").forEach(win => {
+    state[win.id] = {
+      hidden: win.classList.contains("hidden-window"),
+      left: win.style.left,
+      top: win.style.top,
+      right: win.style.right,
+      bottom: win.style.bottom,
+      width: win.style.width,
+      height: win.style.height,
+      zIndex: win.style.zIndex
+    };
+  });
+  saveJson(STORAGE_KEYS.windows, state);
+}
+function restoreWindowState() {
+  const state = loadJson(STORAGE_KEYS.windows, {});
+  Object.entries(state).forEach(([id, s]) => {
+    const win = $(id);
+    if (!win) return;
+    win.classList.toggle("hidden-window", !!s.hidden);
+    if (s.left) win.style.left = s.left;
+    if (s.top) win.style.top = s.top;
+    if (s.right) win.style.right = s.right;
+    if (s.bottom) win.style.bottom = s.bottom;
+    if (s.width) win.style.width = s.width;
+    if (s.height) win.style.height = s.height;
+    if (s.zIndex) win.style.zIndex = s.zIndex;
+  });
+}
+function initWindowDrag() {
+  document.querySelectorAll(".window").forEach(win => {
+    bringToFront(win);
+    win.addEventListener("pointerdown", () => bringToFront(win));
+    const bar = win.querySelector(".window-titlebar");
+    bar.addEventListener("pointerdown", e => {
+      if (window.matchMedia("(max-width: 820px)").matches) return;
+      e.preventDefault();
+      bringToFront(win);
+      const startX = e.clientX, startY = e.clientY;
+      const rect = win.getBoundingClientRect();
+      win.style.right = "auto";
+      win.style.bottom = "auto";
+      const move = ev => {
+        win.style.left = Math.max(0, rect.left + ev.clientX - startX) + "px";
+        win.style.top = Math.max(0, rect.top + ev.clientY - startY) + "px";
+      };
+      const up = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        saveWindowState();
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
+  });
 }
 
 function addChat({ speaker, type, text }) {
@@ -65,14 +128,19 @@ function addChat({ speaker, type, text }) {
 }
 function renderChat() {
   const chat = loadJson(STORAGE_KEYS.chat, []);
-  const html = chat.length ? chat.map(item => `
+  const log = $("chatLog");
+  if (!log) return;
+  if (!chat.length) {
+    log.innerHTML = `<p class="note">チャットログはまだありません。</p>`;
+    return;
+  }
+  log.innerHTML = chat.map(item => `
     <div class="log-item speaker-${escapeHtml(item.speaker)}">
       <div class="log-meta">${escapeHtml(item.time)} / ${escapeHtml(item.speaker)} / ${escapeHtml(item.type)}</div>
       <div>${escapeHtml(item.text).replaceAll("\n", "<br>")}</div>
-    </div>`).join("") : `<p class="note">チャットログはまだありません。</p>`;
-  $("chatLogInline").innerHTML = html;
-  $("chatLogModal").innerHTML = html;
-  $("chatLogInline").scrollTop = $("chatLogInline").scrollHeight;
+    </div>
+  `).join("");
+  log.scrollTop = log.scrollHeight;
 }
 function sendChat() {
   const speaker = $("speakerInput").value.trim() || "PLAYER";
@@ -81,7 +149,6 @@ function sendChat() {
   if (!text) { alert("本文を入力してください。"); return; }
   addChat({ speaker, type, text });
   $("chatTextInput").value = "";
-  closeModals();
 }
 function copyChatLog() {
   const chat = loadJson(STORAGE_KEYS.chat, []);
@@ -112,7 +179,7 @@ function selectToken(id) {
 }
 function addToken() {
   const name = $("tokenNameInput").value.trim();
-  if (!name) { alert("名前を入力してください。"); return; }
+  if (!name) { alert("コマ名を入力してください。"); return; }
   const tokens = getTokens();
   const token = {
     id: crypto.randomUUID(),
@@ -130,7 +197,7 @@ function addToken() {
   pendingTokenImage = "";
   $("tokenImageInput").value = "";
   renderTokens();
-  addChat({ speaker: "SYSTEM", type: "メモ", text: `コマ「${name}」を追加しました。` });
+  addChat({ speaker: "SYSTEM", type: "メモ", text: `コマ「${name}」を盤面に追加しました。` });
 }
 function updateToken() {
   const token = getSelectedToken();
@@ -178,14 +245,12 @@ function renderTokens() {
     : "選択中コマ：なし";
 
   $("tokenList").innerHTML = tokens.length ? tokens.map(t => `
-    <div class="token-row ${t.id === selectedTokenId ? "selected" : ""}" data-row-token="${t.id}">
+    <div class="token-row ${t.id === selectedTokenId ? "selected" : ""}" data-token-row="${t.id}">
       <strong>${escapeHtml(t.name)}</strong> / ${escapeHtml(t.type)}
       ${t.hp ? `<br>HP：${escapeHtml(t.hp)}` : ""}
       ${t.memo ? `<br>${escapeHtml(t.memo)}` : ""}
     </div>`).join("") : `<p class="note">コマはまだありません。</p>`;
-  document.querySelectorAll("[data-row-token]").forEach(row => {
-    row.addEventListener("click", () => selectToken(row.dataset.rowToken));
-  });
+  document.querySelectorAll("[data-token-row]").forEach(row => row.addEventListener("click", () => selectToken(row.dataset.tokenRow)));
 }
 function tokenPointerDown(e) {
   e.preventDefault();
@@ -195,7 +260,6 @@ function tokenPointerDown(e) {
   const board = $("board");
   const tokenEl = e.currentTarget;
   tokenEl.setPointerCapture(e.pointerId);
-
   const move = ev => {
     const rect = board.getBoundingClientRect();
     const x = ((ev.clientX - rect.left) / rect.width) * 100;
@@ -218,16 +282,14 @@ function tokenPointerDown(e) {
 
 function renderBoardImage() {
   const dataUrl = localStorage.getItem(STORAGE_KEYS.boardImage);
-  const img = $("boardImage");
-  const empty = $("emptyBoard");
   if (dataUrl) {
-    img.src = dataUrl;
-    img.style.display = "block";
-    empty.style.display = "none";
+    $("boardImage").src = dataUrl;
+    $("boardImage").style.display = "block";
+    $("emptyBoard").style.display = "none";
   } else {
-    img.removeAttribute("src");
-    img.style.display = "none";
-    empty.style.display = "grid";
+    $("boardImage").removeAttribute("src");
+    $("boardImage").style.display = "none";
+    $("emptyBoard").style.display = "grid";
   }
 }
 function handleBoardImage(file) {
@@ -270,7 +332,7 @@ function saveGm() {
     ruling:$("gmRuling").value, needCheck:$("gmNeedCheck").value
   };
   saveJson(STORAGE_KEYS.gm, gm);
-  alert("GMメモ保存しました。");
+  alert("GM保存しました。");
 }
 function loadGmToForm() {
   const gm = loadJson(STORAGE_KEYS.gm, {});
@@ -446,7 +508,7 @@ function exportDataObject() {
     history: loadJson(STORAGE_KEYS.history, []),
     boardImage: localStorage.getItem(STORAGE_KEYS.boardImage) || "",
     tokens: getTokens(),
-    ui: loadJson(STORAGE_KEYS.ui, {})
+    windows: loadJson(STORAGE_KEYS.windows, {})
   };
 }
 function copyExportData() {
@@ -463,43 +525,25 @@ function importData() {
     saveJson(STORAGE_KEYS.gm, data.gm || {});
     saveJson(STORAGE_KEYS.history, data.history || []);
     saveJson(STORAGE_KEYS.tokens, data.tokens || []);
-    saveJson(STORAGE_KEYS.ui, data.ui || {});
+    saveJson(STORAGE_KEYS.windows, data.windows || {});
     if (data.boardImage) localStorage.setItem(STORAGE_KEYS.boardImage, data.boardImage);
     refreshAll();
     alert("取り込みました。");
   } catch { alert("取り込み失敗。JSONを確認してください。"); }
 }
-function toggleChatDock() {
-  const ui = loadJson(STORAGE_KEYS.ui, {});
-  ui.chatDockHidden = !ui.chatDockHidden;
-  saveJson(STORAGE_KEYS.ui, ui);
-  applyUi();
-}
-function applyUi() {
-  const ui = loadJson(STORAGE_KEYS.ui, {});
-  $("chatDock").classList.toggle("hidden-dock", !!ui.chatDockHidden);
+function resetLayout() {
+  if (!confirm("ウィンドウ配置を初期化しますか？")) return;
+  localStorage.removeItem(STORAGE_KEYS.windows);
+  location.reload();
 }
 
 function initEvents() {
-  bind("openSpeakBtn", "click", () => {
-    const token = getSelectedToken();
-    $("speakerInput").value = token?.name || $("pcName").value || "PLAYER";
-    openModal("speakModal");
-  });
-  bind("openDiceBtn", "click", () => openModal("diceModal"));
-  bind("openChatBtn", "click", () => openModal("chatModal"));
-  bind("openTokenBtn", "click", () => openModal("tokenModal"));
-  bind("openSettingBtn", "click", () => openModal("settingModal"));
-  bind("openGmBtn", "click", () => openModal("gmModal"));
-  bind("exportBtn", "click", () => openModal("exportModal"));
-  bind("modalBackdrop", "click", closeModals);
-  document.querySelectorAll("[data-close]").forEach(btn => btn.addEventListener("click", closeModals));
+  document.querySelectorAll("[data-open-window]").forEach(btn => btn.addEventListener("click", () => openWindow(btn.dataset.openWindow)));
+  document.querySelectorAll("[data-close-window]").forEach(btn => btn.addEventListener("click", () => closeWindow(btn.dataset.closeWindow)));
 
   bind("sendChatBtn", "click", sendChat);
   bind("copyChatBtn", "click", copyChatLog);
   bind("clearChatBtn", "click", clearChat);
-  bind("collapseChatBtn", "click", toggleChatDock);
-  bind("toggleChatDockBtn", "click", toggleChatDock);
 
   bind("addTokenBtn", "click", addToken);
   bind("updateTokenBtn", "click", updateToken);
@@ -508,8 +552,9 @@ function initEvents() {
 
   bind("boardImageInput", "change", e => { const f = e.target.files?.[0]; if (f) handleBoardImage(f); });
   bind("clearBoardImageBtn", "click", () => { localStorage.removeItem(STORAGE_KEYS.boardImage); renderBoardImage(); });
+  bind("resetLayoutBtn", "click", resetLayout);
 
-  bind("checkTypeSelect", "change", () => { applyCheckType(); });
+  bind("checkTypeSelect", "change", applyCheckType);
   bind("applyPlayerBtn", "click", applyPlayerValue);
   bind("rollBtn", "click", rollCheck);
 
@@ -527,13 +572,15 @@ function initEvents() {
   bind("copyExportBtn", "click", copyExportData);
   bind("importDataBtn", "click", importData);
 }
+
 function refreshAll() {
+  restoreWindowState();
+  initWindowDrag();
   loadPlayerToForm();
   loadGmToForm();
   renderBoardImage();
   renderTokens();
   renderChat();
-  applyUi();
 }
 function init() {
   initEvents();

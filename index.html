@@ -3,257 +3,241 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sora GM Table v0.3</title>
+  <title>Sora GM Table v0.4</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div>
-        <h1>Sora GM Table</h1>
-        <p>SW2.5 Solo Table v0.3</p>
-      </div>
-      <div class="top-actions">
-        <button id="openGmBtn" class="ghost-btn">GM</button>
-        <button id="exportBtn" class="ghost-btn">保存出力</button>
-      </div>
-    </header>
+  <header class="app-bar">
+    <div class="brand">
+      <div class="brand-title">Sora GM Table</div>
+      <div class="brand-sub">SW2.5 Solo Table v0.4 / Window Table</div>
+    </div>
+    <nav class="launcher">
+      <button data-open-window="window-board">盤面</button>
+      <button data-open-window="window-chat">チャット</button>
+      <button data-open-window="window-dice">判定</button>
+      <button data-open-window="window-token">コマ</button>
+      <button data-open-window="window-player">PLAYER</button>
+      <button data-open-window="window-gm">GM</button>
+      <button data-open-window="window-data">保存</button>
+    </nav>
+  </header>
 
-    <main class="table-stage">
-      <section class="board-wrap">
+  <main id="desktop" class="desktop">
+    <section id="window-board" class="window board-window" style="left:12px; top:12px; width:65vw; height:66vh;">
+      <header class="window-titlebar">
+        <span>盤面 / Table</span>
+        <button class="window-close" data-close-window="window-board">－</button>
+      </header>
+      <div class="window-body board-body">
         <div id="board" class="board">
-          <img id="boardImage" alt="board background" />
+          <img id="boardImage" alt="盤面背景" />
           <div id="emptyBoard" class="empty-board">
             <strong>盤面背景なし</strong>
-            <span>設定から背景画像を入れてください</span>
+            <span>「卓設定」から背景画像を設定</span>
           </div>
           <div id="tokenLayer" class="token-layer"></div>
           <div id="toast" class="toast hidden"></div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <aside id="chatDock" class="chat-dock">
-        <div class="dock-head">
-          <strong>チャット</strong>
-          <button id="collapseChatBtn" class="mini-btn">収納</button>
+    <section id="window-chat" class="window chat-window" style="right:12px; top:12px; width:32vw; height:66vh;">
+      <header class="window-titlebar">
+        <span>チャット / Chat</span>
+        <button class="window-close" data-close-window="window-chat">－</button>
+      </header>
+      <div class="window-body chat-body">
+        <div id="chatLog" class="chat-log"></div>
+        <div class="chat-input-area">
+          <div class="grid-2 compact">
+            <label>発言者<input id="speakerInput" type="text" placeholder="PLAYER" /></label>
+            <label>種別
+              <select id="chatTypeInput">
+                <option>行動宣言</option>
+                <option>質問</option>
+                <option>RP発言</option>
+                <option>状況描写</option>
+                <option>選択肢提示</option>
+                <option>判定要求</option>
+                <option>判定結果</option>
+                <option>結果描写</option>
+                <option>世界反応</option>
+                <option>GM裁定</option>
+                <option>要確認</option>
+                <option>メモ</option>
+              </select>
+            </label>
+          </div>
+          <textarea id="chatTextInput" rows="3" placeholder="発言内容"></textarea>
+          <div class="button-row">
+            <button id="sendChatBtn" class="primary">送信</button>
+            <button id="copyChatBtn">コピー</button>
+            <button id="clearChatBtn" class="danger">削除</button>
+          </div>
         </div>
-        <div id="chatLogInline" class="chat-log-inline"></div>
-      </aside>
-    </main>
+      </div>
+    </section>
 
-    <nav class="bottom-dock">
-      <button id="openSpeakBtn">発言</button>
-      <button id="openDiceBtn">判定</button>
-      <button id="openChatBtn">ログ</button>
-      <button id="openTokenBtn">コマ</button>
-      <button id="openSettingBtn">設定</button>
-    </nav>
-  </div>
-
-  <div id="modalBackdrop" class="modal-backdrop hidden"></div>
-
-  <section id="speakModal" class="modal hidden">
-    <header class="modal-header">
-      <h2>発言</h2>
-      <button data-close class="close-btn">×</button>
-    </header>
-    <div class="modal-body">
-      <div class="grid-2">
-        <label>発言者
-          <input id="speakerInput" type="text" placeholder="選択中コマ名またはPLAYER" />
-        </label>
-        <label>種別
-          <select id="chatTypeInput">
-            <option>行動宣言</option>
-            <option>質問</option>
-            <option>RP発言</option>
-            <option>状況描写</option>
-            <option>選択肢提示</option>
-            <option>判定要求</option>
-            <option>判定結果</option>
-            <option>結果描写</option>
-            <option>世界反応</option>
-            <option>GM裁定</option>
-            <option>要確認</option>
-            <option>メモ</option>
+    <section id="window-dice" class="window small-window" style="left:12px; bottom:12px; width:31vw; height:29vh;">
+      <header class="window-titlebar">
+        <span>判定 / Dice</span>
+        <button class="window-close" data-close-window="window-dice">－</button>
+      </header>
+      <div class="window-body">
+        <label>判定方法
+          <select id="checkTypeSelect">
+            <option value="manual">手入力</option>
+            <option value="accuracy">命中力判定</option>
+            <option value="evasion">回避力判定</option>
+            <option value="magic">魔法行使判定</option>
+            <option value="vitality">生命抵抗力判定</option>
+            <option value="spirit">精神抵抗力判定</option>
+            <option value="search">探索判定</option>
+            <option value="custom">その他の行為判定</option>
           </select>
         </label>
+        <div class="grid-2 compact">
+          <label>判定名<input id="checkNameInput" type="text" /></label>
+          <label>目標値<input id="targetValueInput" type="number" placeholder="任意" /></label>
+        </div>
+        <div class="grid-2 compact">
+          <label>基準値<input id="baseValueInput" type="number" /></label>
+          <label>修正値<input id="modifierInput" type="number" value="0" /></label>
+        </div>
+        <div class="button-row">
+          <button id="applyPlayerBtn">PLAYER基準値</button>
+          <button id="rollBtn" class="primary">2D6判定</button>
+        </div>
+        <p id="diceError" class="error"></p>
+        <div id="diceResult" class="result-box">未判定</div>
       </div>
-      <textarea id="chatTextInput" rows="6" placeholder="発言内容"></textarea>
-      <button id="sendChatBtn" class="primary-btn">送信</button>
-    </div>
-  </section>
+    </section>
 
-  <section id="chatModal" class="modal hidden">
-    <header class="modal-header">
-      <h2>チャットログ</h2>
-      <button data-close class="close-btn">×</button>
-    </header>
-    <div class="modal-body">
-      <div class="button-row">
-        <button id="copyChatBtn" class="secondary-btn">ログコピー</button>
-        <button id="clearChatBtn" class="danger-btn">ログ削除</button>
+    <section id="window-token" class="window small-window" style="left:34vw; bottom:12px; width:31vw; height:29vh;">
+      <header class="window-titlebar">
+        <span>コマ / Token</span>
+        <button class="window-close" data-close-window="window-token">－</button>
+      </header>
+      <div class="window-body">
+        <div class="grid-2 compact">
+          <label>名前<input id="tokenNameInput" type="text" placeholder="ワールド / ゴブリン / 扉" /></label>
+          <label>種別
+            <select id="tokenTypeInput">
+              <option value="PLAYER">PLAYER</option>
+              <option value="NPC">NPC</option>
+              <option value="ENEMY">ENEMY</option>
+              <option value="OBJECT">OBJECT</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid-2 compact">
+          <label>HP<input id="tokenHpInput" type="number" placeholder="任意" /></label>
+          <label>画像<input id="tokenImageInput" type="file" accept="image/*" /></label>
+        </div>
+        <label>メモ<textarea id="tokenMemoInput" rows="2"></textarea></label>
+        <div class="button-row">
+          <button id="addTokenBtn" class="primary">追加</button>
+          <button id="updateTokenBtn">更新</button>
+          <button id="deleteTokenBtn" class="danger">削除</button>
+        </div>
+        <div id="selectedTokenInfo" class="selected-info">選択中コマ：なし</div>
+        <div id="tokenList" class="token-list"></div>
       </div>
-      <div id="chatLogModal" class="chat-log-modal"></div>
-    </div>
-  </section>
+    </section>
 
-  <section id="diceModal" class="modal hidden">
-    <header class="modal-header">
-      <h2>行為判定</h2>
-      <button data-close class="close-btn">×</button>
-    </header>
-    <div class="modal-body">
-      <label>判定方法
-        <select id="checkTypeSelect">
-          <option value="manual">手入力</option>
-          <option value="accuracy">命中力判定</option>
-          <option value="evasion">回避力判定</option>
-          <option value="magic">魔法行使判定</option>
-          <option value="vitality">生命抵抗力判定</option>
-          <option value="spirit">精神抵抗力判定</option>
-          <option value="search">探索判定</option>
-          <option value="custom">その他の行為判定</option>
-        </select>
-      </label>
-      <label>判定名
-        <input id="checkNameInput" type="text" placeholder="例：探索判定" />
-      </label>
-      <div class="grid-3">
-        <label>基準値<input id="baseValueInput" type="number" /></label>
-        <label>修正値<input id="modifierInput" type="number" value="0" /></label>
-        <label>目標値<input id="targetValueInput" type="number" placeholder="任意" /></label>
+    <section id="window-player" class="window small-window" style="right:12px; bottom:12px; width:32vw; height:29vh;">
+      <header class="window-titlebar">
+        <span>PLAYERステータス / Character</span>
+        <button class="window-close" data-close-window="window-player">－</button>
+      </header>
+      <div class="window-body">
+        <div class="grid-3 compact">
+          <label>名前<input id="pcName" type="text" /></label>
+          <label>種族<input id="pcRace" type="text" /></label>
+          <label>Lv<input id="pcLevel" type="number" /></label>
+          <label>HP現在<input id="pcHpNow" type="number" /></label>
+          <label>HP最大<input id="pcHpMax" type="number" /></label>
+          <label>防護点<input id="pcDefense" type="number" /></label>
+          <label>MP現在<input id="pcMpNow" type="number" /></label>
+          <label>MP最大<input id="pcMpMax" type="number" /></label>
+          <label>命中<input id="pcAccuracy" type="number" /></label>
+          <label>回避<input id="pcEvasion" type="number" /></label>
+          <label>生命抵抗<input id="pcVitality" type="number" /></label>
+          <label>精神抵抗<input id="pcSpirit" type="number" /></label>
+          <label>魔法行使<input id="pcMagic" type="number" /></label>
+          <label>探索<input id="pcSearch" type="number" /></label>
+        </div>
+        <label>メモ<textarea id="pcMemo" rows="2"></textarea></label>
+        <div class="button-row">
+          <button id="savePlayerBtn" class="primary">PLAYER保存</button>
+        </div>
       </div>
-      <div class="button-row">
-        <button id="applyPlayerBtn" class="secondary-btn">PLAYER基準値</button>
-        <button id="rollBtn" class="primary-btn">2D6で判定</button>
-      </div>
-      <p id="diceError" class="error"></p>
-      <div id="diceResult" class="result-box">まだ判定していません。</div>
-    </div>
-  </section>
+    </section>
 
-  <section id="tokenModal" class="modal hidden">
-    <header class="modal-header">
-      <h2>コマ / オブジェクト</h2>
-      <button data-close class="close-btn">×</button>
-    </header>
-    <div class="modal-body">
-      <p class="note">盤面上のコマはドラッグで移動できます。タップすると選択できます。</p>
-      <div class="grid-2">
-        <label>名前<input id="tokenNameInput" type="text" /></label>
-        <label>種別
-          <select id="tokenTypeInput">
-            <option value="PLAYER">PLAYER</option>
-            <option value="NPC">NPC</option>
-            <option value="ENEMY">ENEMY</option>
-            <option value="OBJECT">OBJECT</option>
-          </select>
-        </label>
-        <label>HP<input id="tokenHpInput" type="number" placeholder="任意" /></label>
-        <label>画像<input id="tokenImageInput" type="file" accept="image/*" /></label>
+    <section id="window-gm" class="window hidden-window" style="left:18vw; top:8vh; width:64vw; height:80vh;">
+      <header class="window-titlebar">
+        <span>GM管理 / Sora GM Prompt</span>
+        <button class="window-close" data-close-window="window-gm">－</button>
+      </header>
+      <div class="window-body">
+        <div class="grid-2">
+          <label>シナリオ名<input id="gmScenario" type="text" /></label>
+          <label>現在地<input id="gmLocation" type="text" /></label>
+        </div>
+        <label>現在の目的<textarea id="gmObjective" rows="2"></textarea></label>
+        <label>公開状況<textarea id="gmPublicInfo" rows="3"></textarea></label>
+        <label>隠し情報<textarea id="gmHiddenInfo" rows="3"></textarea></label>
+        <label>障害物・地形<textarea id="gmTerrain" rows="2"></textarea></label>
+        <label>NPC情報<textarea id="gmNpc" rows="2"></textarea></label>
+        <label>敵NPC情報<textarea id="gmEnemy" rows="2"></textarea></label>
+        <label>イベントトリガー<textarea id="gmTrigger" rows="2"></textarea></label>
+        <label>提示中の選択肢<textarea id="gmChoices" rows="2"></textarea></label>
+        <label>GM裁定メモ<textarea id="gmRuling" rows="2"></textarea></label>
+        <label>要確認ルール<textarea id="gmNeedCheck" rows="2"></textarea></label>
+        <div class="button-row">
+          <button id="saveGmBtn" class="primary">GM保存</button>
+          <button id="sendPublicInfoBtn">公開状況をチャットへ</button>
+          <button id="sendChoicesBtn">選択肢をチャットへ</button>
+          <button id="generatePromptBtn" class="primary">プロンプト生成</button>
+          <button id="copyPromptBtn">プロンプトコピー</button>
+        </div>
+        <textarea id="generatedPrompt" rows="10" readonly></textarea>
       </div>
-      <label>メモ<textarea id="tokenMemoInput" rows="4"></textarea></label>
-      <div class="button-row">
-        <button id="addTokenBtn" class="primary-btn">追加</button>
-        <button id="updateTokenBtn" class="secondary-btn">更新</button>
-        <button id="deleteTokenBtn" class="danger-btn">削除</button>
+    </section>
+
+    <section id="window-data" class="window hidden-window" style="left:20vw; top:12vh; width:60vw; height:70vh;">
+      <header class="window-titlebar">
+        <span>保存 / Import Export / 卓設定</span>
+        <button class="window-close" data-close-window="window-data">－</button>
+      </header>
+      <div class="window-body">
+        <h3>卓設定</h3>
+        <label>盤面背景画像<input id="boardImageInput" type="file" accept="image/*" /></label>
+        <div class="button-row">
+          <button id="clearBoardImageBtn">背景削除</button>
+          <button id="resetLayoutBtn" class="danger">ウィンドウ配置リセット</button>
+        </div>
+
+        <h3>ゆとシートJSON</h3>
+        <textarea id="ytsheetJsonInput" rows="5" placeholder="JSONを貼り付け"></textarea>
+        <input id="ytsheetFileInput" type="file" accept=".json,application/json" />
+        <div class="button-row">
+          <button id="importJsonTextBtn">JSON反映</button>
+          <button id="clearJsonBtn">JSONクリア</button>
+        </div>
+        <p id="jsonImportResult" class="note"></p>
+
+        <h3>保存データ</h3>
+        <div class="button-row">
+          <button id="copyExportBtn" class="primary">保存データコピー</button>
+          <button id="importDataBtn">貼り付けデータ取り込み</button>
+        </div>
+        <textarea id="importDataInput" rows="8" placeholder="保存JSONを貼り付け"></textarea>
       </div>
-      <div id="selectedTokenInfo" class="result-box">選択中コマ：なし</div>
-      <div id="tokenList" class="token-list"></div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <section id="settingModal" class="modal hidden">
-    <header class="modal-header">
-      <h2>卓設定</h2>
-      <button data-close class="close-btn">×</button>
-    </header>
-    <div class="modal-body">
-      <label>盤面背景画像
-        <input id="boardImageInput" type="file" accept="image/*" />
-      </label>
-      <div class="button-row">
-        <button id="clearBoardImageBtn" class="secondary-btn">背景削除</button>
-        <button id="toggleChatDockBtn" class="secondary-btn">チャット表示切替</button>
-      </div>
-
-      <h3>PLAYER情報</h3>
-      <div class="grid-2">
-        <label>キャラクター名<input id="pcName" type="text" /></label>
-        <label>種族<input id="pcRace" type="text" /></label>
-        <label>冒険者Lv<input id="pcLevel" type="number" /></label>
-        <label>防護点<input id="pcDefense" type="number" /></label>
-        <label>HP現在<input id="pcHpNow" type="number" /></label>
-        <label>HP最大<input id="pcHpMax" type="number" /></label>
-        <label>MP現在<input id="pcMpNow" type="number" /></label>
-        <label>MP最大<input id="pcMpMax" type="number" /></label>
-        <label>命中<input id="pcAccuracy" type="number" /></label>
-        <label>回避<input id="pcEvasion" type="number" /></label>
-        <label>生命抵抗<input id="pcVitality" type="number" /></label>
-        <label>精神抵抗<input id="pcSpirit" type="number" /></label>
-        <label>魔法行使<input id="pcMagic" type="number" /></label>
-        <label>探索<input id="pcSearch" type="number" /></label>
-      </div>
-      <label>PLAYERメモ<textarea id="pcMemo" rows="4"></textarea></label>
-      <button id="savePlayerBtn" class="primary-btn">PLAYER保存</button>
-
-      <h3>ゆとシートJSON</h3>
-      <textarea id="ytsheetJsonInput" rows="5" placeholder="JSONを貼り付け"></textarea>
-      <input id="ytsheetFileInput" type="file" accept=".json,application/json" />
-      <div class="button-row">
-        <button id="importJsonTextBtn" class="secondary-btn">JSON反映</button>
-        <button id="clearJsonBtn" class="secondary-btn">JSONクリア</button>
-      </div>
-      <p id="jsonImportResult" class="note"></p>
-    </div>
-  </section>
-
-  <section id="gmModal" class="modal hidden">
-    <header class="modal-header">
-      <h2>GMメモ / ソラ連携</h2>
-      <button data-close class="close-btn">×</button>
-    </header>
-    <div class="modal-body">
-      <label>シナリオ名<input id="gmScenario" type="text" /></label>
-      <label>現在地<input id="gmLocation" type="text" /></label>
-      <label>現在の目的<textarea id="gmObjective" rows="3"></textarea></label>
-      <label>公開状況<textarea id="gmPublicInfo" rows="5"></textarea></label>
-      <label>隠し情報<textarea id="gmHiddenInfo" rows="5"></textarea></label>
-      <label>障害物・地形<textarea id="gmTerrain" rows="4"></textarea></label>
-      <label>NPC情報<textarea id="gmNpc" rows="4"></textarea></label>
-      <label>敵NPC情報<textarea id="gmEnemy" rows="4"></textarea></label>
-      <label>イベントトリガー<textarea id="gmTrigger" rows="4"></textarea></label>
-      <label>提示中の選択肢<textarea id="gmChoices" rows="4"></textarea></label>
-      <label>GM裁定メモ<textarea id="gmRuling" rows="4"></textarea></label>
-      <label>要確認ルール<textarea id="gmNeedCheck" rows="4"></textarea></label>
-      <div class="button-row">
-        <button id="saveGmBtn" class="primary-btn">GM保存</button>
-        <button id="sendPublicInfoBtn" class="secondary-btn">公開状況をログへ</button>
-        <button id="sendChoicesBtn" class="secondary-btn">選択肢をログへ</button>
-      </div>
-
-      <h3>ソラGM用プロンプト</h3>
-      <button id="generatePromptBtn" class="primary-btn">プロンプト生成</button>
-      <textarea id="generatedPrompt" rows="10" readonly></textarea>
-      <button id="copyPromptBtn" class="secondary-btn">コピー</button>
-    </div>
-  </section>
-
-  <section id="exportModal" class="modal hidden">
-    <header class="modal-header">
-      <h2>保存データ</h2>
-      <button data-close class="close-btn">×</button>
-    </header>
-    <div class="modal-body">
-      <div class="button-row">
-        <button id="copyExportBtn" class="primary-btn">保存データをコピー</button>
-        <button id="importDataBtn" class="secondary-btn">貼り付けデータを取り込む</button>
-      </div>
-      <textarea id="importDataInput" rows="10" placeholder="取り込みたい保存JSONを貼り付け"></textarea>
-    </div>
-  </section>
-
-  <script src="./app.js?v=030"></script>
+  <script src="./app.js?v=040"></script>
 </body>
 </html>
