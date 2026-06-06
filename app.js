@@ -205,17 +205,92 @@ function clearChat() {
   renderChat();
 }
 
+
+function hideTokenContextMenu() {
+  const menu = $("tokenContextMenu");
+  if (menu) menu.classList.add("hidden");
+}
+
+function showTokenContextMenu(event, tokenId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  selectToken(tokenId);
+
+  const menu = $("tokenContextMenu");
+  if (!menu) return;
+
+  menu.style.left = `${event.clientX}px`;
+  menu.style.top = `${event.clientY}px`;
+  menu.classList.remove("hidden");
+}
+
+function openTokenWindowForSelected() {
+  if (!selectedTokenId) {
+    alert("コマを選択してください。");
+    return;
+  }
+  openWindow("window-token");
+}
+
+function copySelectedToken() {
+  const token = getSelectedToken();
+  if (!token) {
+    alert("コピーするコマを選択してください。");
+    return;
+  }
+
+  const tokens = getTokens();
+  const copied = {
+    ...token,
+    id: crypto.randomUUID(),
+    name: `${token.name} コピー`,
+    x: Math.min(98, Number(token.x || 50) + 4),
+    y: Math.min(98, Number(token.y || 50) + 4)
+  };
+
+  tokens.push(copied);
+  saveTokens(tokens);
+  selectedTokenId = copied.id;
+  renderTokens();
+  fillTokenForm(copied);
+  showToast("コピーを作成しました");
+}
+
 function getTokens() { return loadJson(STORAGE_KEYS.tokens, []); }
 function saveTokens(tokens) { saveJson(STORAGE_KEYS.tokens, tokens); }
 function getSelectedToken() { return getTokens().find(t => t.id === selectedTokenId) || null; }
 function fillTokenForm(token) {
   if (!token) return;
   $("tokenNameInput").value = token.name || "";
-  $("tokenTypeInput").value = token.type || "PLAYER";
+  $("tokenTypeInput").value = token.type || "NPC";
   $("tokenHpInput").value = token.hp || "";
+  if ($("tokenHpMaxInput")) $("tokenHpMaxInput").value = token.hpMax || token.hp || "";
+  if ($("tokenMpInput")) $("tokenMpInput").value = token.mp || "";
+  if ($("tokenMpMaxInput")) $("tokenMpMaxInput").value = token.mpMax || token.mp || "";
   $("tokenMemoInput").value = token.memo || "";
-  if ($("tokenSizeInput")) $("tokenSizeInput").value = token.size || 58;
+  if ($("tokenInfoInput")) $("tokenInfoInput").value = token.info || "";
+  if ($("tokenSizeInput")) $("tokenSizeInput").value = token.sheetSize || 3;
+  if ($("tokenDexInput")) $("tokenDexInput").value = token.dex || "";
+  if ($("tokenAgiInput")) $("tokenAgiInput").value = token.agi || "";
+  if ($("tokenStrInput")) $("tokenStrInput").value = token.str || "";
+  if ($("tokenVitInput")) $("tokenVitInput").value = token.vit || "";
+  if ($("tokenIntInput")) $("tokenIntInput").value = token.int || "";
+  if ($("tokenMndInput")) $("tokenMndInput").value = token.mnd || "";
+  if ($("tokenCombatArtsInput")) $("tokenCombatArtsInput").value = token.combatArts || "";
   $("speakerInput").value = token.name || "PLAYER";
+  renderTokenPortrait(token);
+}
+
+function renderTokenPortrait(token) {
+  const portrait = $("tokenPortrait");
+  if (!portrait) return;
+
+  if (token && token.image) {
+    portrait.innerHTML = `<img src="${token.image}" alt="${escapeHtml(token.name)}">`;
+  } else {
+    portrait.textContent = "No Image";
+  }
 }
 
 function updateSelectedTokenInfo() {
@@ -225,7 +300,7 @@ function updateSelectedTokenInfo() {
   if (!box) return;
 
   box.textContent = selected
-    ? `選択中：${selected.name} / ${selected.type}${selected.hp ? " / HP:" + selected.hp : ""} / サイズ:${selected.size || 58}\n位置：X ${Math.round(Number(selected.x || 50))}% / Y ${Math.round(Number(selected.y || 50))}%\n${selected.memo || ""}`
+    ? `選択中：${selected.name} / ${selected.type}${selected.hp ? " / HP:" + selected.hp + "/" + (selected.hpMax || selected.hp) : ""}${selected.mp ? " / MP:" + selected.mp + "/" + (selected.mpMax || selected.mp) : ""}\nsize:${selected.sheetSize || 3} / 表示:${selected.size || 58}px / X ${Math.round(Number(selected.x || 50))}% / Y ${Math.round(Number(selected.y || 50))}%\n${selected.info || selected.memo || ""}`
     : "選択中コマ：なし";
 }
 
@@ -261,9 +336,21 @@ function addToken() {
     name,
     type: $("tokenTypeInput").value,
     hp: $("tokenHpInput").value,
+    hpMax: $("tokenHpMaxInput")?.value || $("tokenHpInput").value,
+    mp: $("tokenMpInput")?.value || "",
+    mpMax: $("tokenMpMaxInput")?.value || $("tokenMpInput")?.value || "",
     memo: $("tokenMemoInput").value,
+    info: $("tokenInfoInput")?.value || "",
     image: pendingTokenImage,
-    size: Number($("tokenSizeInput")?.value || 58),
+    sheetSize: Number($("tokenSizeInput")?.value || 3),
+    size: Number($("tokenSizeInput")?.value || 3) * 20,
+    dex: $("tokenDexInput")?.value || "",
+    agi: $("tokenAgiInput")?.value || "",
+    str: $("tokenStrInput")?.value || "",
+    vit: $("tokenVitInput")?.value || "",
+    int: $("tokenIntInput")?.value || "",
+    mnd: $("tokenMndInput")?.value || "",
+    combatArts: $("tokenCombatArtsInput")?.value || "",
     x: 50,
     y: 50
   };
@@ -283,8 +370,20 @@ function updateToken() {
   t.name = $("tokenNameInput").value.trim() || t.name;
   t.type = $("tokenTypeInput").value;
   t.hp = $("tokenHpInput").value;
+  t.hpMax = $("tokenHpMaxInput")?.value || t.hpMax || t.hp;
+  t.mp = $("tokenMpInput")?.value || t.mp || "";
+  t.mpMax = $("tokenMpMaxInput")?.value || t.mpMax || t.mp || "";
   t.memo = $("tokenMemoInput").value;
-  t.size = Number($("tokenSizeInput")?.value || t.size || 58);
+  t.info = $("tokenInfoInput")?.value || t.info || "";
+  t.sheetSize = Number($("tokenSizeInput")?.value || t.sheetSize || 3);
+  t.size = t.sheetSize * 20;
+  t.dex = $("tokenDexInput")?.value || "";
+  t.agi = $("tokenAgiInput")?.value || "";
+  t.str = $("tokenStrInput")?.value || "";
+  t.vit = $("tokenVitInput")?.value || "";
+  t.int = $("tokenIntInput")?.value || "";
+  t.mnd = $("tokenMndInput")?.value || "";
+  t.combatArts = $("tokenCombatArtsInput")?.value || "";
   if (pendingTokenImage) {
     t.image = pendingTokenImage;
     pendingTokenImage = "";
@@ -306,7 +405,7 @@ function renderTokens() {
   const layer = $("tokenLayer");
 
   layer.innerHTML = tokens.map(t => {
-    const size = Number(t.size || 58);
+    const size = Number(t.size || ((t.sheetSize || 3) * 20));
     const content = t.image ? `<img src="${t.image}" alt="${escapeHtml(t.name)}">` : escapeHtml((t.name || "?").slice(0, 2));
 
     return `<button class="token ${escapeHtml(t.type)} ${t.id === selectedTokenId ? "selected" : ""}"
@@ -322,6 +421,13 @@ function renderTokens() {
       e.stopPropagation();
       selectToken(btn.dataset.tokenId);
     });
+    btn.addEventListener("dblclick", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectToken(btn.dataset.tokenId);
+      openWindow("window-token");
+    });
+    btn.addEventListener("contextmenu", e => showTokenContextMenu(e, btn.dataset.tokenId));
   });
 
   updateSelectedTokenInfo();
@@ -472,7 +578,11 @@ function handleBoardImage(file) {
 }
 function handleTokenImage(file) {
   const reader = new FileReader();
-  reader.onload = () => { pendingTokenImage = String(reader.result || ""); };
+  reader.onload = () => {
+    pendingTokenImage = String(reader.result || "");
+    const selected = getSelectedToken();
+    renderTokenPortrait({ ...(selected || {}), image: pendingTokenImage });
+  };
   reader.readAsDataURL(file);
 }
 
@@ -1112,6 +1222,14 @@ function initEvents() {
   bind("tokenSizeDownBtn", "click", () => resizeSelectedToken(-8));
   bind("tokenSizeUpBtn", "click", () => resizeSelectedToken(8));
   bind("tokenImageInput", "change", e => { const f = e.target.files?.[0]; if (f) handleTokenImage(f); });
+  bind("saveTokenBtn", "click", updateToken);
+  bind("copyTokenBtn", "click", copySelectedToken);
+  bind("editTokenToggleBtn", "click", () => showToast("この版では常に編集可能です"));
+  bind("ctxShowDetailBtn", "click", () => { hideTokenContextMenu(); openTokenWindowForSelected(); });
+  bind("ctxShowChatBtn", "click", () => { hideTokenContextMenu(); openWindow("window-chat"); });
+  bind("ctxMoveToBoardBtn", "click", () => { hideTokenContextMenu(); showToast("既にテーブル上にいます"); });
+  bind("ctxCopyTokenBtn", "click", () => { hideTokenContextMenu(); copySelectedToken(); });
+  document.addEventListener("click", hideTokenContextMenu);
 
   bind("boardImageInput", "change", e => { const f = e.target.files?.[0]; if (f) handleBoardImage(f); });
   bind("clearBoardImageBtn", "click", () => { localStorage.removeItem(STORAGE_KEYS.boardImage); renderBoardImage(); });

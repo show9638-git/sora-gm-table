@@ -10,7 +10,7 @@
   <header class="app-bar">
     <div class="brand">
       <div class="brand-title">Sora GM Table</div>
-      <div class="brand-sub">SW2.5 Solo Table v0.4.8 / Window Table</div>
+      <div class="brand-sub">SW2.5 Solo Table v0.4.9 / Window Table</div>
     </div>
     <nav class="launcher">
       <button data-open-window="window-board">盤面</button>
@@ -120,51 +120,82 @@
         <button class="window-close" data-close-window="window-token">－</button>
       </header>
       <div class="window-body">
-        <p class="note">コマは盤面上でドラッグ移動できます。動かない場合は、コマを一度クリックして選択してからドラッグしてください。</p>
-        <div class="grid-2 compact">
-          <label>名前<input id="tokenNameInput" type="text" placeholder="ワールド / ゴブリン / 扉" /></label>
-          <label>種別
-            <select id="tokenTypeInput">
-              <option value="PLAYER">PLAYER</option>
-              <option value="NPC">NPC</option>
-              <option value="ENEMY">ENEMY</option>
-              <option value="OBJECT">OBJECT</option>
-            </select>
+        <div class="token-sheet-toolbar">
+          <button id="editTokenToggleBtn">編集切り替え</button>
+          <label class="image-change-btn">画像変更
+            <input id="tokenImageInput" type="file" accept="image/*" />
           </label>
+          <button id="copyTokenBtn">コピーを作る</button>
+          <button id="saveTokenBtn" class="primary">保存</button>
+          <select id="tokenPlaceSelect">
+            <option value="table">テーブル</option>
+            <option value="hidden">非表示</option>
+          </select>
         </div>
-        <div class="grid-2 compact">
-          <label>HP<input id="tokenHpInput" type="number" placeholder="任意" /></label>
-          <label>サイズ<input id="tokenSizeInput" type="number" value="58" min="24" max="180" /></label>
-          <label>画像<input id="tokenImageInput" type="file" accept="image/*" /></label>
+
+        <div class="token-sheet">
+          <div class="token-portrait-panel">
+            <div id="tokenPortrait" class="token-portrait">No Image</div>
+          </div>
+
+          <div class="token-block token-common">
+            <h3>common</h3>
+            <label>name<input id="tokenNameInput" type="text" placeholder="モンスター-C" /></label>
+            <label>size<input id="tokenSizeInput" type="number" value="3" min="1" max="10" /></label>
+            <label>type
+              <select id="tokenTypeInput">
+                <option value="PLAYER">PLAYER</option>
+                <option value="NPC">NPC</option>
+                <option value="ENEMY">ENEMY</option>
+                <option value="OBJECT">OBJECT</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="token-block token-resource">
+            <h3>リソース</h3>
+            <label>HP
+              <input id="tokenHpInput" type="number" placeholder="現在値" />
+              <input id="tokenHpMaxInput" type="number" placeholder="最大値" />
+            </label>
+            <label>MP
+              <input id="tokenMpInput" type="number" placeholder="現在値" />
+              <input id="tokenMpMaxInput" type="number" placeholder="最大値" />
+            </label>
+          </div>
+
+          <div class="token-block">
+            <h3>情報</h3>
+            <label>説明<textarea id="tokenInfoInput" rows="3" placeholder="ここに説明を書く"></textarea></label>
+            <label>メモ<textarea id="tokenMemoInput" rows="4" placeholder="任意の文字列"></textarea></label>
+          </div>
+
+          <div class="token-block">
+            <h3>能力</h3>
+            <div class="ability-grid">
+              <label>器用度<input id="tokenDexInput" type="number" /></label>
+              <label>敏捷度<input id="tokenAgiInput" type="number" /></label>
+              <label>筋力<input id="tokenStrInput" type="number" /></label>
+              <label>生命力<input id="tokenVitInput" type="number" /></label>
+              <label>知力<input id="tokenIntInput" type="number" /></label>
+              <label>精神力<input id="tokenMndInput" type="number" /></label>
+            </div>
+          </div>
+
+          <div class="token-block">
+            <h3>戦闘特技</h3>
+            <textarea id="tokenCombatArtsInput" rows="8" placeholder="Lv1 全力攻撃&#10;Lv3 武器習熟/ソード"></textarea>
+          </div>
         </div>
-        <label>メモ<textarea id="tokenMemoInput" rows="2"></textarea></label>
-        <div class="button-row">
-          <button id="addTokenBtn" class="primary">追加</button>
-          <button id="updateTokenBtn">更新</button>
+
+        <div class="button-row token-create-row">
+          <button id="addTokenBtn" class="primary">新規コマとして追加</button>
+          <button id="updateTokenBtn">選択中コマを更新</button>
           <button id="deleteTokenBtn" class="danger">削除</button>
         </div>
 
-        <h3>コマ操作</h3>
-        <p class="note">ドラッグが効かない環境でも、選択中コマを下のボタンで動かせます。</p>
-        <div class="move-pad">
-          <span></span>
-          <button id="tokenMoveUpBtn">上</button>
-          <span></span>
-          <button id="tokenMoveLeftBtn">左</button>
-          <button id="tokenMoveCenterBtn">中央</button>
-          <button id="tokenMoveRightBtn">右</button>
-          <span></span>
-          <button id="tokenMoveDownBtn">下</button>
-          <span></span>
-        </div>
-        <div class="button-row">
-          <button id="tokenSizeDownBtn">小さく</button>
-          <button id="tokenSizeUpBtn">大きく</button>
-        </div>
-
         <div id="selectedTokenInfo" class="selected-info">選択中コマ：なし</div>
-        <div id="tokenList" class="token-list"></div>
-      </div>
+</div>
     </section>
 
     <section id="window-player" class="window small-window" style="right:12px; bottom:12px; width:32vw; height:29vh;">
@@ -310,6 +341,13 @@
     </section>
   </main>
 
-  <script src="./app.js?v=048"></script>
+  <div id="tokenContextMenu" class="context-menu hidden">
+    <button id="ctxShowDetailBtn">詳細を表示</button>
+    <button id="ctxShowChatBtn">チャットパレットを表示</button>
+    <button id="ctxMoveToBoardBtn">登場に移動</button>
+    <button id="ctxCopyTokenBtn">コピーを作る</button>
+  </div>
+
+  <script src="./app.js?v=049"></script>
 </body>
 </html>
