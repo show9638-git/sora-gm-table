@@ -10,7 +10,7 @@
   <header class="app-header">
     <div>
       <h1>Sora GM Table</h1>
-      <p>SW2.5 Solo GM Table v0.1</p>
+      <p>SW2.5 Solo GM Table v0.1.1</p>
     </div>
     <button id="exportDataBtn" class="small-btn">保存データ出力</button>
   </header>
@@ -36,6 +36,7 @@
 
       <section class="card">
         <h2>チャット入力</h2>
+
         <div class="grid-2">
           <label>
             発言者
@@ -78,7 +79,7 @@
 
       <section class="card">
         <h2>クイック判定</h2>
-        <p class="note">チャットを見ながら、そのまま行為判定を振れます。PLAYER情報がある場合は基準値を自動反映できます。</p>
+        <p class="note">ここで振ると、判定結果を即チャットログへ追加します。</p>
 
         <label>
           判定方法
@@ -115,11 +116,12 @@
         </div>
 
         <div class="button-row">
-          <button id="chatRollBtn">判定してチャットへ送る</button>
           <button id="chatApplyPlayerValueBtn" class="sub-btn">PLAYER基準値を反映</button>
+          <button id="chatRollBtn">判定してチャットへ送る</button>
         </div>
 
         <p id="chatDiceError" class="error"></p>
+        <div id="chatQuickResult" class="result-box">まだクイック判定していません。</div>
       </section>
 
       <section class="card">
@@ -276,9 +278,9 @@
   </main>
 
   <footer>
-    <p>v0.1 / localStorage保存 / AI自動接続なし</p>
+    <p>v0.1.1 / localStorage保存 / AI自動接続なし</p>
   </footer>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=011"></script>
 </body>
 </html>
