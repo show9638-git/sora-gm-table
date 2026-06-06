@@ -208,18 +208,50 @@ function clearChat() {
 function getTokens() { return loadJson(STORAGE_KEYS.tokens, []); }
 function saveTokens(tokens) { saveJson(STORAGE_KEYS.tokens, tokens); }
 function getSelectedToken() { return getTokens().find(t => t.id === selectedTokenId) || null; }
+function fillTokenForm(token) {
+  if (!token) return;
+  $("tokenNameInput").value = token.name || "";
+  $("tokenTypeInput").value = token.type || "PLAYER";
+  $("tokenHpInput").value = token.hp || "";
+  $("tokenMemoInput").value = token.memo || "";
+  if ($("tokenSizeInput")) $("tokenSizeInput").value = token.size || 58;
+  $("speakerInput").value = token.name || "PLAYER";
+}
+
+function updateSelectedTokenInfo() {
+  const selected = getSelectedToken();
+  const box = $("selectedTokenInfo");
+
+  if (!box) return;
+
+  box.textContent = selected
+    ? `選択中：${selected.name} / ${selected.type}${selected.hp ? " / HP:" + selected.hp : ""} / サイズ:${selected.size || 58}\n位置：X ${Math.round(Number(selected.x || 50))}% / Y ${Math.round(Number(selected.y || 50))}%\n${selected.memo || ""}`
+    : "選択中コマ：なし";
+}
+
 function selectToken(id) {
   selectedTokenId = id;
   const token = getSelectedToken();
-  if (token) {
-    $("tokenNameInput").value = token.name || "";
-    $("tokenTypeInput").value = token.type || "PLAYER";
-    $("tokenHpInput").value = token.hp || "";
-    $("tokenMemoInput").value = token.memo || "";
-    $("speakerInput").value = token.name || "PLAYER";
-  }
+  fillTokenForm(token);
   renderTokens();
 }
+
+function selectTokenWithoutRender(id) {
+  selectedTokenId = id;
+  const token = getSelectedToken();
+  fillTokenForm(token);
+
+  document.querySelectorAll(".token").forEach(el => {
+    el.classList.toggle("selected", el.dataset.tokenId === id);
+  });
+
+  document.querySelectorAll("[data-token-row]").forEach(row => {
+    row.classList.toggle("selected", row.dataset.tokenRow === id);
+  });
+
+  updateSelectedTokenInfo();
+}
+
 function addToken() {
   const name = $("tokenNameInput").value.trim();
   if (!name) { alert("コマ名を入力してください。"); return; }
@@ -231,6 +263,7 @@ function addToken() {
     hp: $("tokenHpInput").value,
     memo: $("tokenMemoInput").value,
     image: pendingTokenImage,
+    size: Number($("tokenSizeInput")?.value || 58),
     x: 50,
     y: 50
   };
@@ -251,6 +284,7 @@ function updateToken() {
   t.type = $("tokenTypeInput").value;
   t.hp = $("tokenHpInput").value;
   t.memo = $("tokenMemoInput").value;
+  t.size = Number($("tokenSizeInput")?.value || t.size || 58);
   if (pendingTokenImage) {
     t.image = pendingTokenImage;
     pendingTokenImage = "";
@@ -270,30 +304,40 @@ function deleteToken() {
 function renderTokens() {
   const tokens = getTokens();
   const layer = $("tokenLayer");
+
   layer.innerHTML = tokens.map(t => {
+    const size = Number(t.size || 58);
     const content = t.image ? `<img src="${t.image}" alt="${escapeHtml(t.name)}">` : escapeHtml((t.name || "?").slice(0, 2));
+
     return `<button class="token ${escapeHtml(t.type)} ${t.id === selectedTokenId ? "selected" : ""}"
-      data-token-id="${t.id}" style="left:${t.x}%; top:${t.y}%;">
+      data-token-id="${t.id}"
+      style="left:${t.x}%; top:${t.y}%; --token-size:${size}px; --token-label-top:${size}px;">
       ${content}<span class="token-label">${escapeHtml(t.name)}</span>
     </button>`;
   }).join("");
+
   document.querySelectorAll(".token").forEach(btn => {
     btn.addEventListener("pointerdown", tokenPointerDown);
-    btn.addEventListener("click", e => { e.stopPropagation(); selectToken(btn.dataset.tokenId); });
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      selectToken(btn.dataset.tokenId);
+    });
   });
 
-  const selected = getSelectedToken();
-  $("selectedTokenInfo").textContent = selected
-    ? `選択中：${selected.name} / ${selected.type}${selected.hp ? " / HP:" + selected.hp : ""}\n${selected.memo || ""}`
-    : "選択中コマ：なし";
+  updateSelectedTokenInfo();
 
   $("tokenList").innerHTML = tokens.length ? tokens.map(t => `
     <div class="token-row ${t.id === selectedTokenId ? "selected" : ""}" data-token-row="${t.id}">
       <strong>${escapeHtml(t.name)}</strong> / ${escapeHtml(t.type)}
       ${t.hp ? `<br>HP：${escapeHtml(t.hp)}` : ""}
+      <br>サイズ：${escapeHtml(t.size || 58)}
+      <br>位置：X ${Math.round(Number(t.x || 50))}% / Y ${Math.round(Number(t.y || 50))}%
       ${t.memo ? `<br>${escapeHtml(t.memo)}` : ""}
     </div>`).join("") : `<p class="note">コマはまだありません。</p>`;
-  document.querySelectorAll("[data-token-row]").forEach(row => row.addEventListener("click", () => selectToken(row.dataset.tokenRow)));
+
+  document.querySelectorAll("[data-token-row]").forEach(row => {
+    row.addEventListener("click", () => selectToken(row.dataset.tokenRow));
+  });
 }
 function tokenPointerDown(e) {
   e.preventDefault();
@@ -303,16 +347,20 @@ function tokenPointerDown(e) {
   const tokenEl = e.currentTarget;
   const board = $("board");
 
-  selectToken(id);
-  tokenEl.setPointerCapture?.(e.pointerId);
+  selectTokenWithoutRender(id);
 
   let latestX = null;
   let latestY = null;
   let moved = false;
 
-  const move = ev => {
-    const rect = board.getBoundingClientRect();
+  try {
+    tokenEl.setPointerCapture(e.pointerId);
+  } catch {}
 
+  const move = ev => {
+    ev.preventDefault();
+
+    const rect = board.getBoundingClientRect();
     latestX = ((ev.clientX - rect.left) / rect.width) * 100;
     latestY = ((ev.clientY - rect.top) / rect.height) * 100;
 
@@ -329,13 +377,10 @@ function tokenPointerDown(e) {
     window.removeEventListener("pointerup", up);
     window.removeEventListener("pointercancel", up);
 
-    if (!moved || latestX === null || latestY === null) {
-      return;
-    }
+    if (!moved || latestX === null || latestY === null) return;
 
     const tokens = getTokens();
     const token = tokens.find(t => t.id === id);
-
     if (!token) return;
 
     token.x = latestX;
@@ -346,9 +391,63 @@ function tokenPointerDown(e) {
     showToast("コマを移動しました");
   };
 
-  window.addEventListener("pointermove", move);
+  window.addEventListener("pointermove", move, { passive: false });
   window.addEventListener("pointerup", up);
   window.addEventListener("pointercancel", up);
+}
+
+function moveSelectedToken(dx, dy) {
+  const token = getSelectedToken();
+  if (!token) {
+    alert("移動するコマを選択してください。");
+    return;
+  }
+
+  const tokens = getTokens();
+  const t = tokens.find(item => item.id === token.id);
+  if (!t) return;
+
+  t.x = Math.max(2, Math.min(98, Number(t.x || 50) + dx));
+  t.y = Math.max(2, Math.min(98, Number(t.y || 50) + dy));
+
+  saveTokens(tokens);
+  renderTokens();
+}
+
+function centerSelectedToken() {
+  const token = getSelectedToken();
+  if (!token) {
+    alert("中央に戻すコマを選択してください。");
+    return;
+  }
+
+  const tokens = getTokens();
+  const t = tokens.find(item => item.id === token.id);
+  if (!t) return;
+
+  t.x = 50;
+  t.y = 50;
+
+  saveTokens(tokens);
+  renderTokens();
+}
+
+function resizeSelectedToken(delta) {
+  const token = getSelectedToken();
+  if (!token) {
+    alert("サイズ変更するコマを選択してください。");
+    return;
+  }
+
+  const tokens = getTokens();
+  const t = tokens.find(item => item.id === token.id);
+  if (!t) return;
+
+  t.size = Math.max(24, Math.min(180, Number(t.size || 58) + delta));
+
+  saveTokens(tokens);
+  fillTokenForm(t);
+  renderTokens();
 }
 
 function renderBoardImage() {
@@ -1005,6 +1104,13 @@ function initEvents() {
   bind("addTokenBtn", "click", addToken);
   bind("updateTokenBtn", "click", updateToken);
   bind("deleteTokenBtn", "click", deleteToken);
+  bind("tokenMoveUpBtn", "click", () => moveSelectedToken(0, -5));
+  bind("tokenMoveDownBtn", "click", () => moveSelectedToken(0, 5));
+  bind("tokenMoveLeftBtn", "click", () => moveSelectedToken(-5, 0));
+  bind("tokenMoveRightBtn", "click", () => moveSelectedToken(5, 0));
+  bind("tokenMoveCenterBtn", "click", centerSelectedToken);
+  bind("tokenSizeDownBtn", "click", () => resizeSelectedToken(-8));
+  bind("tokenSizeUpBtn", "click", () => resizeSelectedToken(8));
   bind("tokenImageInput", "change", e => { const f = e.target.files?.[0]; if (f) handleTokenImage(f); });
 
   bind("boardImageInput", "change", e => { const f = e.target.files?.[0]; if (f) handleBoardImage(f); });

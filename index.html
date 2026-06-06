@@ -10,7 +10,7 @@
   <header class="app-bar">
     <div class="brand">
       <div class="brand-title">Sora GM Table</div>
-      <div class="brand-sub">SW2.5 Solo Table v0.4.7 / Window Table</div>
+      <div class="brand-sub">SW2.5 Solo Table v0.4.8 / Window Table</div>
     </div>
     <nav class="launcher">
       <button data-open-window="window-board">盤面</button>
@@ -134,6 +134,7 @@
         </div>
         <div class="grid-2 compact">
           <label>HP<input id="tokenHpInput" type="number" placeholder="任意" /></label>
+          <label>サイズ<input id="tokenSizeInput" type="number" value="58" min="24" max="180" /></label>
           <label>画像<input id="tokenImageInput" type="file" accept="image/*" /></label>
         </div>
         <label>メモ<textarea id="tokenMemoInput" rows="2"></textarea></label>
@@ -142,6 +143,25 @@
           <button id="updateTokenBtn">更新</button>
           <button id="deleteTokenBtn" class="danger">削除</button>
         </div>
+
+        <h3>コマ操作</h3>
+        <p class="note">ドラッグが効かない環境でも、選択中コマを下のボタンで動かせます。</p>
+        <div class="move-pad">
+          <span></span>
+          <button id="tokenMoveUpBtn">上</button>
+          <span></span>
+          <button id="tokenMoveLeftBtn">左</button>
+          <button id="tokenMoveCenterBtn">中央</button>
+          <button id="tokenMoveRightBtn">右</button>
+          <span></span>
+          <button id="tokenMoveDownBtn">下</button>
+          <span></span>
+        </div>
+        <div class="button-row">
+          <button id="tokenSizeDownBtn">小さく</button>
+          <button id="tokenSizeUpBtn">大きく</button>
+        </div>
+
         <div id="selectedTokenInfo" class="selected-info">選択中コマ：なし</div>
         <div id="tokenList" class="token-list"></div>
       </div>
@@ -290,6 +310,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=047"></script>
+  <script src="./app.js?v=048"></script>
 </body>
 </html>

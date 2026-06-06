@@ -285,3 +285,45 @@ h3 { margin: 12px 0 8px; color: var(--paper); }
   border-bottom: 2px solid var(--accent);
   opacity: .85;
 }
+
+
+/* v0.4.8 */
+.window {
+  resize: both;
+}
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  z-index: 5;
+}
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+.move-pad {
+  max-width: 230px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 8px 0;
+}
+.move-pad button {
+  padding: 8px;
+}
+.token {
+  width: var(--token-size, 58px);
+  height: var(--token-size, 58px);
+}
+.token-label {
+  top: var(--token-label-top, 58px);
+}
