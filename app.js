@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
   windows: "sora_gm_windows_v04",
   characterJsonUrl: "sora_gm_character_json_url_v042",
   characterJsonFileName: "sora_gm_character_json_file_name_v042",
-  characterJsonLoadMode: "sora_gm_character_json_load_mode_v042"
+  characterJsonLoadMode: "sora_gm_character_json_load_mode_v042",
+  playerJsonFileName: "sora_gm_player_json_file_name_v043"
 };
 
 const CHECK_TYPES = {
@@ -101,6 +102,7 @@ function initWindowDrag() {
     win.addEventListener("pointerdown", () => bringToFront(win));
     const bar = win.querySelector(".window-titlebar");
     bar.addEventListener("pointerdown", e => {
+      if (e.target.closest("[data-close-window]")) return;
       if (window.matchMedia("(max-width: 820px)").matches) return;
       e.preventDefault();
       bringToFront(win);
@@ -502,6 +504,133 @@ function loadCharacterJsonUrlToForm() {
     $("characterJsonLoadMode").value = savedMode;
   }
 }
+
+function getGitHubRepoInfoFromPagesUrl() {
+  const host = window.location.hostname;
+  const pathParts = window.location.pathname.split("/").filter(Boolean);
+
+  if (!host.endsWith(".github.io")) {
+    return null;
+  }
+
+  const owner = host.split(".")[0];
+  const repo = pathParts[0];
+
+  if (!owner || !repo) {
+    return null;
+  }
+
+  return { owner, repo };
+}
+
+async function fetchDataJsonFiles() {
+  const select = $("playerJsonSelect");
+  const result = $("playerJsonLoadResult");
+
+  if (!select || !result) return;
+
+  result.textContent = "data配下のJSON一覧を取得中です...";
+  select.innerHTML = `<option value="">取得中...</option>`;
+
+  const repoInfo = getGitHubRepoInfoFromPagesUrl();
+
+  if (!repoInfo) {
+    select.innerHTML = `<option value="">自動取得不可</option>`;
+    result.textContent = "GitHub PagesのURLからリポジトリを判定できません。ファイル名を直接入力してください。";
+    return;
+  }
+
+  try {
+    const apiUrl = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/contents/data`;
+    const response = await fetch(apiUrl, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const items = await response.json();
+    const jsonFiles = items
+      .filter(item => item.type === "file" && item.name.toLowerCase().endsWith(".json"))
+      .map(item => item.name)
+      .sort((a, b) => a.localeCompare(b, "ja"));
+
+    if (jsonFiles.length === 0) {
+      select.innerHTML = `<option value="">JSONファイルなし</option>`;
+      result.textContent = "data配下にJSONファイルが見つかりませんでした。";
+      return;
+    }
+
+    select.innerHTML = jsonFiles
+      .map(name => `<option value="./data/${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+      .join("");
+
+    result.textContent = `${jsonFiles.length}件のJSONを取得しました。`;
+  } catch (error) {
+    select.innerHTML = `<option value="">取得失敗</option>`;
+    result.textContent = `JSON一覧の取得に失敗しました。ファイル名を直接入力してください。詳細：${error.message}`;
+  }
+}
+
+async function loadPlayerJsonFromPath(path) {
+  const result = $("playerJsonLoadResult");
+
+  if (!path) {
+    if (result) result.textContent = "読み込むJSONを選択、またはファイル名を入力してください。";
+    return;
+  }
+
+  try {
+    if (result) result.textContent = `JSONを読み込み中です：${path}`;
+
+    const response = await fetch(path, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    $("ytsheetJsonInput").value = JSON.stringify(data, null, 2);
+    applyYtsheetData(data);
+
+    localStorage.setItem(STORAGE_KEYS.characterJsonUrl, path);
+    if (path.startsWith("./data/")) {
+      localStorage.setItem(STORAGE_KEYS.playerJsonFileName, path.replace("./data/", ""));
+    }
+
+    if (result) result.textContent = `PLAYER情報へ読み込みました：${path}`;
+  } catch (error) {
+    if (result) result.textContent = `JSONを読み込めませんでした。パス・ファイル名・JSON形式を確認してください。詳細：${error.message}`;
+  }
+}
+
+function loadSelectedPlayerJson() {
+  const select = $("playerJsonSelect");
+  const value = select ? select.value : "";
+  loadPlayerJsonFromPath(value);
+}
+
+function loadTypedPlayerJson() {
+  const input = $("playerJsonFileNameInput");
+  const fileName = input ? input.value.trim() : "";
+
+  if (!fileName) {
+    $("playerJsonLoadResult").textContent = "ファイル名を入力してください。例：nagyuma.json";
+    return;
+  }
+
+  const path = fileName.startsWith("./") || fileName.startsWith("http")
+    ? fileName
+    : `./data/${fileName}`;
+
+  localStorage.setItem(STORAGE_KEYS.playerJsonFileName, fileName);
+  loadPlayerJsonFromPath(path);
+}
+
+function loadPlayerJsonFileNameToForm() {
+  const savedFileName = localStorage.getItem(STORAGE_KEYS.playerJsonFileName);
+  if ($("playerJsonFileNameInput") && savedFileName) {
+    $("playerJsonFileNameInput").value = savedFileName;
+  }
+}
 function applyYtsheetData(data) {
   const map = [
     ["pcName", ["characterName", "name", "pcName"]],
@@ -603,8 +732,21 @@ function resetLayout() {
 }
 
 function initEvents() {
-  document.querySelectorAll("[data-open-window]").forEach(btn => btn.addEventListener("click", () => openWindow(btn.dataset.openWindow)));
-  document.querySelectorAll("[data-close-window]").forEach(btn => btn.addEventListener("click", () => closeWindow(btn.dataset.closeWindow)));
+  document.querySelectorAll("[data-open-window]").forEach(btn => {
+    btn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openWindow(btn.dataset.openWindow);
+    });
+  });
+
+  document.querySelectorAll("[data-close-window]").forEach(btn => {
+    btn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeWindow(btn.dataset.closeWindow);
+    });
+  });
 
   bind("sendChatBtn", "click", sendChat);
   bind("copyChatBtn", "click", copyChatLog);
@@ -624,6 +766,9 @@ function initEvents() {
   bind("rollBtn", "click", rollCheck);
 
   bind("savePlayerBtn", "click", savePlayer);
+  bind("refreshPlayerJsonListBtn", "click", fetchDataJsonFiles);
+  bind("loadSelectedPlayerJsonBtn", "click", loadSelectedPlayerJson);
+  bind("loadTypedPlayerJsonBtn", "click", loadTypedPlayerJson);
   bind("saveGmBtn", "click", saveGm);
   bind("sendPublicInfoBtn", "click", () => sendGmFieldToChat("gmPublicInfo", "状況描写"));
   bind("sendChoicesBtn", "click", () => sendGmFieldToChat("gmChoices", "選択肢提示"));
@@ -643,6 +788,7 @@ function refreshAll() {
   restoreWindowState();
   initWindowDrag();
   loadCharacterJsonUrlToForm();
+  loadPlayerJsonFileNameToForm();
   loadPlayerToForm();
   loadGmToForm();
   renderBoardImage();
