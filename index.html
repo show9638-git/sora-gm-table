@@ -10,7 +10,7 @@
   <header class="app-bar">
     <div class="brand">
       <div class="brand-title">Sora GM Table</div>
-      <div class="brand-sub">SW2.5 Solo Table v0.4 / Window Table</div>
+      <div class="brand-sub">SW2.5 Solo Table v0.4.2 / Window Table</div>
     </div>
     <nav class="launcher">
       <button data-open-window="window-board">盤面</button>
@@ -220,6 +220,25 @@
         </div>
 
         <h3>ゆとシートJSON</h3>
+        <label>キャラクターJSON URL または相対パス
+          <input id="characterJsonUrlInput" type="text" placeholder="./data/キャラクター名.json または https://..." />
+        </label>
+        <div class="grid-2 compact">
+          <label>data配下のファイル名だけ指定
+            <input id="characterJsonFileNameInput" type="text" placeholder="nagyuma.json / world.json など" />
+          </label>
+          <label>読み込みモード
+            <select id="characterJsonLoadMode">
+              <option value="url">URL/相対パス欄を使う</option>
+              <option value="filename">data配下のファイル名を使う</option>
+            </select>
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="loadJsonUrlBtn" class="primary">URLからJSON読み込み</button>
+        </div>
+        <p class="note">例：<code>./data/nagyuma.json</code>、またはファイル名欄に <code>nagyuma.json</code>。JSON名は固定ではありません。</p>
+
         <textarea id="ytsheetJsonInput" rows="5" placeholder="JSONを貼り付け"></textarea>
         <input id="ytsheetFileInput" type="file" accept=".json,application/json" />
         <div class="button-row">
@@ -238,6 +257,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=040"></script>
+  <script src="./app.js?v=042"></script>
 </body>
 </html>

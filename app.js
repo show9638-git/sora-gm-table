@@ -5,7 +5,10 @@ const STORAGE_KEYS = {
   history: "sora_gm_history_v04",
   boardImage: "sora_gm_board_image_v04",
   tokens: "sora_gm_tokens_v04",
-  windows: "sora_gm_windows_v04"
+  windows: "sora_gm_windows_v04",
+  characterJsonUrl: "sora_gm_character_json_url_v042",
+  characterJsonFileName: "sora_gm_character_json_file_name_v042",
+  characterJsonLoadMode: "sora_gm_character_json_load_mode_v042"
 };
 
 const CHECK_TYPES = {
@@ -437,6 +440,68 @@ function importYtsheetJsonText() {
   try { applyYtsheetData(JSON.parse(raw)); }
   catch { $("jsonImportResult").textContent = "JSONの読み込みに失敗しました。"; }
 }
+
+function buildCharacterJsonUrl() {
+  const mode = $("characterJsonLoadMode")?.value || "url";
+
+  if (mode === "filename") {
+    const fileName = $("characterJsonFileNameInput").value.trim();
+    if (!fileName) return "";
+    return `./data/${fileName}`;
+  }
+
+  return $("characterJsonUrlInput").value.trim();
+}
+
+async function loadCharacterJsonFromUrl() {
+  const mode = $("characterJsonLoadMode")?.value || "url";
+  const directUrl = $("characterJsonUrlInput").value.trim();
+  const fileName = $("characterJsonFileNameInput").value.trim();
+  const url = buildCharacterJsonUrl();
+
+  if (!url) {
+    $("jsonImportResult").textContent = "JSON URL、またはdata配下のファイル名を入力してください。";
+    return;
+  }
+
+  try {
+    $("jsonImportResult").textContent = "JSONを読み込み中です...";
+    localStorage.setItem(STORAGE_KEYS.characterJsonLoadMode, mode);
+    localStorage.setItem(STORAGE_KEYS.characterJsonUrl, directUrl);
+    localStorage.setItem(STORAGE_KEYS.characterJsonFileName, fileName);
+
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    $("ytsheetJsonInput").value = JSON.stringify(data, null, 2);
+    applyYtsheetData(data);
+    $("jsonImportResult").textContent = `URLから読み込みました：${url}`;
+  } catch (error) {
+    $("jsonImportResult").textContent =
+      `URLからJSONを読み込めませんでした。URL・ファイル名・JSON形式を確認してください。詳細：${error.message}`;
+  }
+}
+
+function loadCharacterJsonUrlToForm() {
+  const savedUrl = localStorage.getItem(STORAGE_KEYS.characterJsonUrl);
+  const savedFileName = localStorage.getItem(STORAGE_KEYS.characterJsonFileName);
+  const savedMode = localStorage.getItem(STORAGE_KEYS.characterJsonLoadMode);
+
+  if ($("characterJsonUrlInput") && savedUrl) {
+    $("characterJsonUrlInput").value = savedUrl;
+  }
+
+  if ($("characterJsonFileNameInput") && savedFileName) {
+    $("characterJsonFileNameInput").value = savedFileName;
+  }
+
+  if ($("characterJsonLoadMode") && savedMode) {
+    $("characterJsonLoadMode").value = savedMode;
+  }
+}
 function applyYtsheetData(data) {
   const map = [
     ["pcName", ["characterName", "name", "pcName"]],
@@ -563,6 +628,7 @@ function initEvents() {
   bind("sendPublicInfoBtn", "click", () => sendGmFieldToChat("gmPublicInfo", "状況描写"));
   bind("sendChoicesBtn", "click", () => sendGmFieldToChat("gmChoices", "選択肢提示"));
 
+  bind("loadJsonUrlBtn", "click", loadCharacterJsonFromUrl);
   bind("importJsonTextBtn", "click", importYtsheetJsonText);
   bind("clearJsonBtn", "click", () => { $("ytsheetJsonInput").value = ""; $("jsonImportResult").textContent = ""; });
   bind("ytsheetFileInput", "change", e => { const f = e.target.files?.[0]; if (f) handleYtsheetFile(f); });
@@ -576,6 +642,7 @@ function initEvents() {
 function refreshAll() {
   restoreWindowState();
   initWindowDrag();
+  loadCharacterJsonUrlToForm();
   loadPlayerToForm();
   loadGmToForm();
   renderBoardImage();
