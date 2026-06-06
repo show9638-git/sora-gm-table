@@ -6,6 +6,49 @@ const STORAGE_KEYS = {
   sceneImage: "sora_gm_scene_image_v01"
 };
 
+const CHECK_TYPES = {
+  manual: {
+    label: "手入力",
+    checkName: "",
+    playerKey: null
+  },
+  accuracy: {
+    label: "命中力判定",
+    checkName: "命中力判定",
+    playerKey: "accuracy"
+  },
+  evasion: {
+    label: "回避力判定",
+    checkName: "回避力判定",
+    playerKey: "evasion"
+  },
+  magic: {
+    label: "魔法行使判定",
+    checkName: "魔法行使判定",
+    playerKey: "magic"
+  },
+  vitality: {
+    label: "生命抵抗力判定",
+    checkName: "生命抵抗力判定",
+    playerKey: "vitality"
+  },
+  spirit: {
+    label: "精神抵抗力判定",
+    checkName: "精神抵抗力判定",
+    playerKey: "spirit"
+  },
+  search: {
+    label: "探索判定",
+    checkName: "探索判定",
+    playerKey: "search"
+  },
+  custom: {
+    label: "その他の行為判定",
+    checkName: "行為判定",
+    playerKey: null
+  }
+};
+
 let latestDiceResult = null;
 
 function $(id) {
@@ -46,6 +89,7 @@ function setActiveTab(tabName) {
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.tab === tabName);
   });
+
   document.querySelectorAll(".tab-panel").forEach(panel => {
     panel.classList.toggle("active", panel.id === tabName);
   });
@@ -53,6 +97,7 @@ function setActiveTab(tabName) {
 
 function addChat({ speaker, type, text }) {
   const chat = loadJson(STORAGE_KEYS.chat, []);
+
   chat.push({
     id: crypto.randomUUID(),
     time: nowText(),
@@ -60,6 +105,7 @@ function addChat({ speaker, type, text }) {
     type,
     text
   });
+
   saveJson(STORAGE_KEYS.chat, chat);
   renderChat();
 }
@@ -97,13 +143,17 @@ function addChatFromInput() {
 
 function copyChatLog() {
   const chat = loadJson(STORAGE_KEYS.chat, []);
-  const text = chat.map(item => `[${item.time} ${item.speaker}/${item.type}]\n${item.text}`).join("\n\n");
+  const text = chat
+    .map(item => `[${item.time} ${item.speaker}/${item.type}]\n${item.text}`)
+    .join("\n\n");
+
   navigator.clipboard.writeText(text);
   alert("チャットログをコピーしました。");
 }
 
 function clearChat() {
   if (!confirm("チャットログをすべて削除しますか？")) return;
+
   localStorage.removeItem(STORAGE_KEYS.chat);
   renderChat();
 }
@@ -133,6 +183,7 @@ function savePlayer() {
 
 function loadPlayerToForm() {
   const p = loadJson(STORAGE_KEYS.player, {});
+
   $("pcName").value = p.name ?? "";
   $("pcRace").value = p.race ?? "";
   $("pcLevel").value = p.level ?? "";
@@ -172,6 +223,7 @@ function saveGm() {
 
 function loadGmToForm() {
   const gm = loadJson(STORAGE_KEYS.gm, {});
+
   $("gmScenario").value = gm.scenario ?? "";
   $("gmLocation").value = gm.location ?? "";
   $("gmObjective").value = gm.objective ?? "";
@@ -188,12 +240,66 @@ function loadGmToForm() {
 
 function sendGmFieldToChat(fieldId, type) {
   const text = $(fieldId).value.trim();
+
   if (!text) {
     alert("送信する内容が空です。");
     return;
   }
+
   addChat({ speaker: "GM", type, text });
   setActiveTab("chat");
+}
+
+function getPlayerValue(key) {
+  const player = loadJson(STORAGE_KEYS.player, {});
+  return player[key];
+}
+
+function getCheckTypeInfo(type) {
+  return CHECK_TYPES[type] || CHECK_TYPES.manual;
+}
+
+function applyCheckTypeToInputs(type, checkNameInputId, baseValueInputId) {
+  const info = getCheckTypeInfo(type);
+
+  if (info.checkName) {
+    $(checkNameInputId).value = info.checkName;
+  }
+
+  if (info.playerKey) {
+    const value = getPlayerValue(info.playerKey);
+
+    if (value !== undefined && value !== null && value !== "") {
+      $(baseValueInputId).value = value;
+    }
+  }
+}
+
+function applySelectedPlayerValue(typeSelectId, checkNameInputId, baseValueInputId, errorId = null) {
+  const type = $(typeSelectId).value;
+  const info = getCheckTypeInfo(type);
+
+  if (info.checkName) {
+    $(checkNameInputId).value = info.checkName;
+  }
+
+  if (!info.playerKey) {
+    if (errorId) $(errorId).textContent = "この判定方法はPLAYER基準値の自動反映対象ではありません。";
+    return false;
+  }
+
+  const value = getPlayerValue(info.playerKey);
+
+  if (value === undefined || value === null || value === "") {
+    if (errorId) $(errorId).textContent = "PLAYER情報が未登録です。";
+    else alert("PLAYER情報が未登録です。");
+    return false;
+  }
+
+  $(baseValueInputId).value = value;
+
+  if (errorId) $(errorId).textContent = "";
+  return true;
 }
 
 function rollD6() {
@@ -204,10 +310,13 @@ function parseRequiredNumber(value, label) {
   if (value === "" || value === null || value === undefined) {
     throw new Error(`${label}を入力してください`);
   }
+
   const num = Number(value);
+
   if (Number.isNaN(num)) {
     throw new Error(`${label}は数値で入力してください`);
   }
+
   return num;
 }
 
@@ -215,70 +324,56 @@ function parseOptionalNumber(value, label, defaultValue = null) {
   if (value === "" || value === null || value === undefined) {
     return defaultValue;
   }
+
   const num = Number(value);
+
   if (Number.isNaN(num)) {
     throw new Error(`${label}は数値で入力してください`);
   }
+
   return num;
 }
 
-function rollCheck() {
-  $("diceError").textContent = "";
+function createCheckResult({ checkName, base, modifier, target }) {
+  const d1 = rollD6();
+  const d2 = rollD6();
+  const total = d1 + d2;
+  const achievement = total + base + modifier;
 
-  try {
-    const checkName = $("checkNameInput").value.trim() || "行為判定";
-    const base = parseRequiredNumber($("baseValueInput").value, "基準値");
-    const modifier = parseOptionalNumber($("modifierInput").value, "修正値", 0);
-    const target = parseOptionalNumber($("targetValueInput").value, "目標値", null);
+  const isAutoFail = d1 === 1 && d2 === 1;
+  const isAutoSuccess = d1 === 6 && d2 === 6;
 
-    const d1 = rollD6();
-    const d2 = rollD6();
-    const total = d1 + d2;
-    const achievement = total + base + modifier;
+  let result;
+  let exp = 0;
 
-    const isAutoFail = d1 === 1 && d2 === 1;
-    const isAutoSuccess = d1 === 6 && d2 === 6;
-
-    let result;
-    let exp = 0;
-
-    if (isAutoFail) {
-      result = "自動失敗";
-      exp = 50;
-    } else if (isAutoSuccess) {
-      result = "自動成功";
-    } else if (target === null) {
-      result = "目標値未設定";
-    } else {
-      result = achievement >= target ? "成功" : "失敗";
-    }
-
-    latestDiceResult = {
-      id: crypto.randomUUID(),
-      time: nowText(),
-      checkType: "action_check",
-      checkName,
-      d1,
-      d2,
-      total,
-      base,
-      modifier,
-      target,
-      achievement,
-      result,
-      isAutoFail,
-      isAutoSuccess,
-      exp
-    };
-
-    saveDiceHistory(latestDiceResult);
-    renderDiceResult(latestDiceResult);
-    renderHistory();
-
-    $("sendResultToChatBtn").disabled = false;
-  } catch (error) {
-    $("diceError").textContent = error.message;
+  if (isAutoFail) {
+    result = "自動失敗";
+    exp = 50;
+  } else if (isAutoSuccess) {
+    result = "自動成功";
+  } else if (target === null) {
+    result = "目標値未設定";
+  } else {
+    result = achievement >= target ? "成功" : "失敗";
   }
+
+  return {
+    id: crypto.randomUUID(),
+    time: nowText(),
+    checkType: "action_check",
+    checkName,
+    d1,
+    d2,
+    total,
+    base,
+    modifier,
+    target,
+    achievement,
+    result,
+    isAutoFail,
+    isAutoSuccess,
+    exp
+  };
 }
 
 function saveDiceHistory(item) {
@@ -287,8 +382,19 @@ function saveDiceHistory(item) {
   saveJson(STORAGE_KEYS.history, history.slice(0, 50));
 }
 
+function formatDiceResultForChat(r) {
+  return `【${r.checkName}】出目：${r.d1}+${r.d2}=${r.total} / 基準値：${r.base} / 修正値：${r.modifier >= 0 ? "+" : ""}${r.modifier} / 達成値：${r.achievement} / 結果：${r.result}${r.exp ? " / 経験点+50" : ""}`;
+}
+
 function renderDiceResult(r) {
-  const cls = r.isAutoFail || r.isAutoSuccess ? "result-special" : r.result === "成功" ? "result-success" : r.result === "失敗" ? "result-fail" : "";
+  const cls = r.isAutoFail || r.isAutoSuccess
+    ? "result-special"
+    : r.result === "成功"
+      ? "result-success"
+      : r.result === "失敗"
+        ? "result-fail"
+        : "";
+
   $("diceResult").className = `result-box ${cls}`;
 
   const targetText = r.target === null ? "なし" : r.target;
@@ -304,16 +410,71 @@ function renderDiceResult(r) {
 結果：${r.result}${expText}`;
 }
 
+function rollCheckFromDiceTab() {
+  $("diceError").textContent = "";
+
+  try {
+    const selectedType = $("checkTypeSelect").value;
+    const info = getCheckTypeInfo(selectedType);
+
+    const checkName = $("checkNameInput").value.trim() || info.checkName || "行為判定";
+    const base = parseRequiredNumber($("baseValueInput").value, "基準値");
+    const modifier = parseOptionalNumber($("modifierInput").value, "修正値", 0);
+    const target = parseOptionalNumber($("targetValueInput").value, "目標値", null);
+
+    latestDiceResult = createCheckResult({ checkName, base, modifier, target });
+
+    saveDiceHistory(latestDiceResult);
+    renderDiceResult(latestDiceResult);
+    renderHistory();
+
+    $("sendResultToChatBtn").disabled = false;
+  } catch (error) {
+    $("diceError").textContent = error.message;
+  }
+}
+
+function rollCheckFromChatTab() {
+  $("chatDiceError").textContent = "";
+
+  try {
+    const selectedType = $("chatCheckTypeSelect").value;
+    const info = getCheckTypeInfo(selectedType);
+
+    if ($("chatBaseValueInput").value === "" && info.playerKey) {
+      applySelectedPlayerValue("chatCheckTypeSelect", "chatCheckNameInput", "chatBaseValueInput", "chatDiceError");
+    }
+
+    const checkName = $("chatCheckNameInput").value.trim() || info.checkName || "行為判定";
+    const base = parseRequiredNumber($("chatBaseValueInput").value, "基準値");
+    const modifier = parseOptionalNumber($("chatModifierInput").value, "修正値", 0);
+    const target = parseOptionalNumber($("chatTargetValueInput").value, "目標値", null);
+
+    const result = createCheckResult({ checkName, base, modifier, target });
+
+    latestDiceResult = result;
+    saveDiceHistory(result);
+    renderHistory();
+
+    addChat({
+      speaker: "PLAYER",
+      type: "判定結果",
+      text: formatDiceResultForChat(result)
+    });
+
+    $("chatDiceError").textContent = "";
+  } catch (error) {
+    $("chatDiceError").textContent = error.message;
+  }
+}
+
 function sendLatestDiceResultToChat() {
   if (!latestDiceResult) return;
-
-  const r = latestDiceResult;
-  const text = `【${r.checkName}】出目：${r.d1}+${r.d2}=${r.total} / 基準値：${r.base} / 修正値：${r.modifier >= 0 ? "+" : ""}${r.modifier} / 達成値：${r.achievement} / 結果：${r.result}${r.exp ? " / 経験点+50" : ""}`;
 
   addChat({
     speaker: "PLAYER",
     type: "判定結果",
-    text
+    text: formatDiceResultForChat(latestDiceResult)
   });
 
   setActiveTab("chat");
@@ -330,6 +491,7 @@ function renderHistory() {
 自動失敗による獲得経験点：${expTotal}`;
 
   const list = $("diceHistory");
+
   if (history.length === 0) {
     list.innerHTML = `<p class="note">判定履歴はまだありません。</p>`;
     return;
@@ -345,26 +507,14 @@ function renderHistory() {
 
 function clearHistory() {
   if (!confirm("判定履歴をすべて削除しますか？")) return;
+
   localStorage.removeItem(STORAGE_KEYS.history);
   renderHistory();
 }
 
-function getPlayerValue(key) {
-  const p = loadJson(STORAGE_KEYS.player, {});
-  return p[key];
-}
-
-function applyPlayerValue(key) {
-  const value = getPlayerValue(key);
-  if (value === undefined || value === null || value === "") {
-    alert("PLAYER情報が未登録です。");
-    return;
-  }
-  $("baseValueInput").value = value;
-}
-
 function importYtsheetJsonText() {
   const raw = $("ytsheetJsonInput").value.trim();
+
   if (!raw) {
     alert("JSONを貼り付けてください。");
     return;
@@ -373,7 +523,7 @@ function importYtsheetJsonText() {
   try {
     const data = JSON.parse(raw);
     applyYtsheetData(data);
-  } catch (error) {
+  } catch {
     $("jsonImportResult").textContent = "JSONの読み込みに失敗しました。形式を確認してください。";
   }
 }
@@ -384,6 +534,7 @@ function pickFirst(data, keys) {
       return data[key];
     }
   }
+
   return "";
 }
 
@@ -407,39 +558,48 @@ function applyYtsheetData(data) {
 
   for (const [elementId, keys] of map) {
     const value = pickFirst(data, keys);
+
     if (value !== "") {
       $(elementId).value = value;
       applied.push(elementId);
     }
   }
 
-  if (!$("pcHpNow").value && $("pcHpMax").value) $("pcHpNow").value = $("pcHpMax").value;
-  if (!$("pcMpNow").value && $("pcMpMax").value) $("pcMpNow").value = $("pcMpMax").value;
+  if (!$("pcHpNow").value && $("pcHpMax").value) {
+    $("pcHpNow").value = $("pcHpMax").value;
+  }
 
-  $("jsonImportResult").textContent =
-    applied.length > 0
-      ? `読み込み成功。反映項目数：${applied.length}。不足項目は手入力してください。`
-      : "読み込みはできましたが、自動反映できる項目が見つかりませんでした。項目名の調整が必要です。";
+  if (!$("pcMpNow").value && $("pcMpMax").value) {
+    $("pcMpNow").value = $("pcMpMax").value;
+  }
+
+  $("jsonImportResult").textContent = applied.length > 0
+    ? `読み込み成功。反映項目数：${applied.length}。不足項目は手入力してください。`
+    : "読み込みはできましたが、自動反映できる項目が見つかりませんでした。項目名の調整が必要です。";
 
   savePlayer();
 }
 
 function handleYtsheetFile(file) {
   const reader = new FileReader();
+
   reader.onload = () => {
     $("ytsheetJsonInput").value = String(reader.result || "");
     importYtsheetJsonText();
   };
+
   reader.readAsText(file);
 }
 
 function handleSceneImage(file) {
   const reader = new FileReader();
+
   reader.onload = () => {
     const dataUrl = String(reader.result || "");
     localStorage.setItem(STORAGE_KEYS.sceneImage, dataUrl);
     renderSceneImage();
   };
+
   reader.readAsDataURL(file);
 }
 
@@ -507,6 +667,7 @@ function exportAllData() {
 
 function importAllData() {
   const raw = $("importDataInput").value.trim();
+
   if (!raw) {
     alert("取り込むJSONを貼り付けてください。");
     return;
@@ -545,7 +706,25 @@ function initEvents() {
   $("copyChatBtn").addEventListener("click", copyChatLog);
   $("clearChatBtn").addEventListener("click", clearChat);
 
-  $("rollBtn").addEventListener("click", rollCheck);
+  $("checkTypeSelect").addEventListener("change", () => {
+    applyCheckTypeToInputs($("checkTypeSelect").value, "checkNameInput", "baseValueInput");
+  });
+
+  $("chatCheckTypeSelect").addEventListener("change", () => {
+    applyCheckTypeToInputs($("chatCheckTypeSelect").value, "chatCheckNameInput", "chatBaseValueInput");
+  });
+
+  $("applyPlayerValueBtn").addEventListener("click", () => {
+    applySelectedPlayerValue("checkTypeSelect", "checkNameInput", "baseValueInput", "diceError");
+  });
+
+  $("chatApplyPlayerValueBtn").addEventListener("click", () => {
+    applySelectedPlayerValue("chatCheckTypeSelect", "chatCheckNameInput", "chatBaseValueInput", "chatDiceError");
+  });
+
+  $("rollBtn").addEventListener("click", rollCheckFromDiceTab);
+  $("chatRollBtn").addEventListener("click", rollCheckFromChatTab);
+
   $("sendResultToChatBtn").addEventListener("click", sendLatestDiceResultToChat);
   $("clearHistoryBtn").addEventListener("click", clearHistory);
 
@@ -578,18 +757,6 @@ function initEvents() {
   $("sceneImageInput").addEventListener("change", event => {
     const file = event.target.files?.[0];
     if (file) handleSceneImage(file);
-  });
-
-  document.querySelectorAll("[data-check-name]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      $("checkNameInput").value = btn.dataset.checkName;
-    });
-  });
-
-  document.querySelectorAll("[data-player-value]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      applyPlayerValue(btn.dataset.playerValue);
-    });
   });
 }
 
